@@ -544,11 +544,31 @@ update_package() {
         if [ -n "$3" ]; then
             PKG_VER=$3
         fi
-        # 替换原有的tags列表查询
-        COMMIT_SHA=$(curl -sL "https://api.github.com/repos/$PKG_REPO/git/ref/tags/$PKG_VER" | jq -r '.object.sha' | cut -c1-7)
+        # 修复标签类型识别
+        local tag_ref_info
+        tag_ref_info=$(curl -sL "https://api.github.com/repos/$PKG_REPO/git/ref/tags/$PKG_VER")
+        local COMMIT_SHA
+    
+        # 检查标签类型
+        if [ "$(echo "$tag_ref_info" | jq -r '.object.type')" == "tag" ]; then
+            # 处理附注标签 - 需要二次请求
+            local tag_obj_url=$(echo "$tag_ref_info" | jq -r '.object.url')
+            if [ "$tag_obj_url" != "null" ]; then
+                tag_info=$(curl -sL "$tag_obj_url")
+                COMMIT_SHA=$(echo "$tag_info" | jq -r '.object.sha')
+            fi
+        else
+            # 轻量标签直接取SHA
+            COMMIT_SHA=$(echo "$tag_ref_info" | jq -r '.object.sha')
+        fi
+    
+        # 截取短SHA
+        COMMIT_SHA=$(echo "$COMMIT_SHA" | cut -c1-7)
+    
         if [ -n "$COMMIT_SHA" ]; then
             sed -i 's/^PKG_GIT_SHORT_COMMIT:=.*/PKG_GIT_SHORT_COMMIT:='$COMMIT_SHA'/g' $mk_path
         fi
+		
         PKG_VER=$(echo $PKG_VER | grep -oE "[\.0-9]{1,}")
 
         local PKG_NAME=$(awk -F"=" '/PKG_NAME:=/ {print $NF}' $mk_path | grep -oE "[-_:/\$\(\)\?\.a-zA-Z0-9]{1,}")
