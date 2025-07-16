@@ -985,7 +985,8 @@ main() {
     fix_rust_compile_error
     # update_smartdns 暂不更新，openwrt-smartdns不适配
     update_diskman
-    fix_samba4
+    # fix_samba4
+	smart_fix_samba4
     install_feeds
     support_fw4_adg
     update_script_priority
