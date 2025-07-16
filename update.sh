@@ -544,7 +544,8 @@ update_package() {
         if [ -n "$3" ]; then
             PKG_VER=$3
         fi
-        local COMMIT_SHA=$(curl -sL "https://api.github.com/repos/$PKG_REPO/tags" | jq -r '.[] | select(.name=="'$PKG_VER'") | .commit.sha' | cut -c1-7)
+        # 替换原有的tags列表查询
+        COMMIT_SHA=$(curl -sL "https://api.github.com/repos/$PKG_REPO/git/ref/tags/$PKG_VER" | jq -r '.object.sha' | cut -c1-7)
         if [ -n "$COMMIT_SHA" ]; then
             sed -i 's/^PKG_GIT_SHORT_COMMIT:=.*/PKG_GIT_SHORT_COMMIT:='$COMMIT_SHA'/g' $mk_path
         fi
