@@ -101,7 +101,7 @@ jobs:
           fi
 
       - name: Build Firmware
-        run: ./build.sh x86-64
+        run: ./build-x86.sh x86-64
 
       - name: Prepare Docker build context
         run: |

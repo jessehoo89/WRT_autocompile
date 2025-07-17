@@ -901,16 +901,44 @@ update_diskman() {
     fi
 }
 
-fix_samba4() {
-    local SAMBA4_MAKEFILE="$BUILD_DIR/feeds/packages/net/samba4/Makefile"
-  
-    # 检查 samba4-libs 的依赖中是否已经包含了 libcrypt-compat
-    if ! sed -n '/define Package\/samba4-libs/,/endef/p' "$SAMBA4_MAKEFILE" | grep -q 'DEPENDS:=.*+libcrypt-compat'; then
-        echo "Adding +libcrypt-compat dependency to samba4-libs..."
-        # 使用更健壮的命令来添加依赖
-        sed -i '/define Package\/samba4-libs/,/endef/s/^\(\s*DEPENDS:=\)/\1 +libcrypt-compat/' "$SAMBA4_MAKEFILE"
-    else
-        echo "Dependency +libcrypt-compat already exists in samba4-libs."
+#  fix_samba4() {
+#      local SAMBA4_MAKEFILE="$BUILD_DIR/feeds/packages/net/samba4/Makefile"
+#  
+#      # 检查 samba4-libs 的依赖中是否已经包含了 libcrypt-compat
+#      if ! sed -n '/define Package\/samba4-libs/,/endef/p' "$SAMBA4_MAKEFILE" | grep -q 'DEPENDS:=.*+libcrypt-compat'; then
+#          echo "Adding +libcrypt-compat dependency to samba4-libs..."
+#          # 使用更健壮的命令来添加依赖
+#          sed -i '/define Package\/samba4-libs/,/endef/s/^\(\s*DEPENDS:=\)/\1 +libcrypt-compat/' "$SAMBA4_MAKEFILE"
+#      else
+#          echo "Dependency +libcrypt-compat already exists in samba4-libs."
+#      fi
+#  }
+
+smart_fix_samba4() {
+    local samba_makefile="$BUILD_DIR/feeds/packages/net/samba4/Makefile"
+    
+    if [ ! -f "$samba_makefile" ]; then
+        echo "⚠️ samba4包不存在，跳过修复"
+        return
+    fi
+    # 检测是否为24.10分支
+    local is_24_10_branch=0
+    if grep -qE "src-git.*(packages|luci|routing|telephony).*openwrt-24\.10" "$BUILD_DIR"/feeds.conf*; then
+        is_24_10_branch=1
+        echo "🔍 检测到 openwrt-24.10 分支，应用兼容性修复"
+    fi
+    
+    # 应用基本修复（所有分支）
+    sed -i \
+        -e "s/PKG_CONFIG_DEPENDS:=/PKG_CONFIG_DEPENDS:= /" \
+        -e "s/--enable-fhs/--enable-fhs --without-pam --without-ads --without-ad-dc/" \
+        "$samba_makefile"
+    
+    # 仅对非24.10分支添加 libcrypt-compat
+    if [ "$is_24_10_branch" -eq 0 ]; then
+        echo "⚠️ 为非24.10分支添加额外依赖"
+        # 在DEPENDS行末尾添加 libcrypt-compat
+        sed -i '/DEPENDS/ s/$/ libcrypt-compat/' "$samba_makefile"
     fi
 }
 
