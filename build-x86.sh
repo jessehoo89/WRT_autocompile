@@ -39,7 +39,7 @@ fi
 
 chmod +x $BASE_PATH/update-x86.sh
 
-$BASE_PATH/update.sh "$REPO_URL" "$REPO_BRANCH" "$BASE_PATH/$BUILD_DIR" "$COMMIT_HASH"
+$BASE_PATH/update-x86.sh "$REPO_URL" "$REPO_BRANCH" "$BASE_PATH/$BUILD_DIR" "$COMMIT_HASH"
 
 \cp -f "$CONFIG_FILE" "$BASE_PATH/$BUILD_DIR/.config"
 

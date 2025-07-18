@@ -78,8 +78,8 @@ jobs:
           set_dhcp_off() {\
               /bin/sh "$GITHUB_WORKSPACE/set_dhcp.sh"\
           }
-          }' update.sh
-          sed -i '/^[[:space:]]*update_default_lan_addr$/a\    set_dhcp_off' update.sh
+          }' update-x86.sh
+          sed -i '/^[[:space:]]*update_default_lan_addr$/a\    set_dhcp_off' update-x86.sh
           chmod +x set_dhcp.sh
           
       - name: Cache Dependencies
@@ -101,7 +101,9 @@ jobs:
           fi
 
       - name: Build Firmware
-        run: ./build-x86.sh x86-64
+        run: |
+          chmod +x build-x86.sh
+          ./build-x86.sh x86-64
 
       - name: Prepare Docker build context
         run: |
