@@ -101,8 +101,9 @@ jobs:
           fi
 
       - name: Build Firmware
-        run: chmod +x build-x86.sh
-             ./build-x86.sh x86-64
+        run: |
+          chmod +x build-x86.sh
+          ./build-x86.sh x86-64
 
       - name: Prepare Docker build context
         run: |
