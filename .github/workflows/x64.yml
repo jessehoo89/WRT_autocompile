@@ -171,6 +171,7 @@ jobs:
       - name: Release Firmware
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.BUILD_DATE }}_x86-64
+          name: R${{ env.DATE }} for x86-64
+          tag: x86-64
           files: ./firmware/*.*
           body_path: ./release_body.txt
