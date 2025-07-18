@@ -914,33 +914,33 @@ update_diskman() {
 #      fi
 #  }
 
-smart_fix_samba4() {
-    local samba_makefile="$BUILD_DIR/feeds/packages/net/samba4/Makefile"
-    
-    if [ ! -f "$samba_makefile" ]; then
-        echo "⚠️ samba4包不存在，跳过修复"
-        return
-    fi
-    # 检测是否为24.10分支
-    local is_24_10_branch=0
-    if grep -qE "src-git.*(packages|luci|routing|telephony).*openwrt-24\.10" "$BUILD_DIR"/feeds.conf*; then
-        is_24_10_branch=1
-        echo "🔍 检测到 openwrt-24.10 分支，应用兼容性修复"
-    fi
-    
-    # 应用基本修复（所有分支）
-    sed -i \
-        -e "s/PKG_CONFIG_DEPENDS:=/PKG_CONFIG_DEPENDS:= /" \
-        -e "s/--enable-fhs/--enable-fhs --without-pam --without-ads --without-ad-dc/" \
-        "$samba_makefile"
-    
-    # 仅对非24.10分支添加 libcrypt-compat
-    if [ "$is_24_10_branch" -eq 0 ]; then
-        echo "⚠️ 为非24.10分支添加额外依赖"
-        # 在DEPENDS行末尾添加 libcrypt-compat
-        sed -i '/DEPENDS/ s/$/ libcrypt-compat/' "$samba_makefile"
-    fi
-}
+#  smart_fix_samba4() {
+#      local samba_makefile="$BUILD_DIR/feeds/packages/net/samba4/Makefile"
+#      
+#      if [ ! -f "$samba_makefile" ]; then
+#          echo "⚠️ samba4包不存在，跳过修复"
+#          return
+#      fi
+#      # 检测是否为24.10分支
+#      local is_24_10_branch=0
+#      if grep -qE "src-git.*(packages|luci|routing|telephony).*openwrt-24\.10" "$BUILD_DIR"/feeds.conf*; then
+#          is_24_10_branch=1
+#          echo "🔍 检测到 openwrt-24.10 分支，应用兼容性修复"
+#      fi
+#      
+#      # 应用基本修复（所有分支）
+#      sed -i \
+#          -e "s/PKG_CONFIG_DEPENDS:=/PKG_CONFIG_DEPENDS:= /" \
+#          -e "s/--enable-fhs/--enable-fhs --without-pam --without-ads --without-ad-dc/" \
+#          "$samba_makefile"
+#      
+#      # 仅对非24.10分支添加 libcrypt-compat
+#      if [ "$is_24_10_branch" -eq 0 ]; then
+#          echo "⚠️ 为非24.10分支添加额外依赖"
+#          # 在DEPENDS行末尾添加 libcrypt-compat
+#          sed -i '/DEPENDS/ s/$/ libcrypt-compat/' "$samba_makefile"
+#      fi
+#  }
 
 main() {
     clone_repo
@@ -986,7 +986,7 @@ main() {
     # update_smartdns 暂不更新，openwrt-smartdns不适配
     update_diskman
     # fix_samba4
-	smart_fix_samba4
+	# smart_fix_samba4
     install_feeds
     support_fw4_adg
     update_script_priority
