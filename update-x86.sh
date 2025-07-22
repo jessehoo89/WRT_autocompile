@@ -950,6 +950,7 @@ main() {
     clone_repo
     clean_up
     reset_feeds_conf
+    update_turboacc
     update_feeds
     remove_unwanted_packages
     update_homeproxy
@@ -1003,7 +1004,6 @@ main() {
     # update_package "xray-core"
     # update_proxy_app_menu_location
     # update_dns_app_menu_location
-    update_turboacc
 }
 
 main "$@"
