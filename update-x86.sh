@@ -942,6 +942,10 @@ update_diskman() {
 #      fi
 #  }
 
+update_turboacc() {
+    curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh && bash add_turboacc.sh
+}
+
 main() {
     clone_repo
     clean_up
@@ -986,7 +990,7 @@ main() {
     # update_smartdns 暂不更新，openwrt-smartdns不适配
     update_diskman
     # fix_samba4
-	# smart_fix_samba4
+    # smart_fix_samba4
     install_feeds
     support_fw4_adg
     update_script_priority
@@ -999,6 +1003,7 @@ main() {
     # update_package "xray-core"
     # update_proxy_app_menu_location
     # update_dns_app_menu_location
+    update_turboacc
 }
 
 main "$@"
