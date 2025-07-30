@@ -26,6 +26,20 @@ read_ini_by_key() {
     awk -F"=" -v key="$key" '$1 == key {print $2}' "$INI_FILE"
 }
 
+# 移除 uhttpd 依赖
+# 当启用luci-app-quickfile插件时，表示启动nginx，所以移除luci对uhttp(luci-light)的依赖
+remove_uhttpd_dependency() {
+    local config_path="$BASE_PATH/$BUILD_DIR/.config"
+    local luci_makefile_path="$BASE_PATH/$BUILD_DIR/feeds/luci/collections/luci/Makefile"
+
+    if grep -q "CONFIG_PACKAGE_luci-app-quickfile=y" "$config_path"; then
+        if [ -f "$luci_makefile_path" ]; then
+            sed -i '/luci-light/d' "$luci_makefile_path"
+            echo "Removed uhttpd (luci-light) dependency as luci-app-quickfile (nginx) is enabled."
+        fi
+    fi
+}
+
 REPO_URL=$(read_ini_by_key "REPO_URL")
 REPO_BRANCH=$(read_ini_by_key "REPO_BRANCH")
 REPO_BRANCH=${REPO_BRANCH:-main}
@@ -42,6 +56,8 @@ chmod +x $BASE_PATH/update.sh
 $BASE_PATH/update.sh "$REPO_URL" "$REPO_BRANCH" "$BASE_PATH/$BUILD_DIR" "$COMMIT_HASH"
 
 \cp -f "$CONFIG_FILE" "$BASE_PATH/$BUILD_DIR/.config"
+
+remove_uhttpd_dependency
 
 cd "$BASE_PATH/$BUILD_DIR"
 make defconfig
