@@ -166,7 +166,7 @@ install_small8() {
         luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
         luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash luci-app-homeproxy \
         luci-app-amlogic nikki luci-app-nikki tailscale luci-app-tailscale oaf open-app-filter luci-app-oaf \
-        easytier luci-app-easytier msd_lite luci-app-msd_lite luci-app-argon-config cups luci-app-cupsd
+        easytier luci-app-easytier msd_lite luci-app-msd_lite cups luci-app-cupsd
 }
 
 install_fullconenat() {
@@ -538,31 +538,10 @@ update_package() {
         if [ -n "$3" ]; then
             PKG_VER=$3
         fi
-        # 修复标签类型识别
-        local tag_ref_info
-        tag_ref_info=$(curl -sL "https://api.github.com/repos/$PKG_REPO/git/ref/tags/$PKG_VER")
-        local COMMIT_SHA
-    
-        # 检查标签类型
-        if [ "$(echo "$tag_ref_info" | jq -r '.object.type')" == "tag" ]; then
-            # 处理附注标签 - 需要二次请求
-            local tag_obj_url=$(echo "$tag_ref_info" | jq -r '.object.url')
-            if [ "$tag_obj_url" != "null" ]; then
-                tag_info=$(curl -sL "$tag_obj_url")
-                COMMIT_SHA=$(echo "$tag_info" | jq -r '.object.sha')
-            fi
-        else
-            # 轻量标签直接取SHA
-            COMMIT_SHA=$(echo "$tag_ref_info" | jq -r '.object.sha')
-        fi
-    
-        # 截取短SHA
-        COMMIT_SHA=$(echo "$COMMIT_SHA" | cut -c1-7)
-    
+        local COMMIT_SHA=$(curl -sL "https://api.github.com/repos/$PKG_REPO/tags" | jq -r '.[] | select(.name=="'$PKG_VER'") | .commit.sha' | cut -c1-7)
         if [ -n "$COMMIT_SHA" ]; then
             sed -i 's/^PKG_GIT_SHORT_COMMIT:=.*/PKG_GIT_SHORT_COMMIT:='$COMMIT_SHA'/g' $mk_path
         fi
-		
         PKG_VER=$(echo $PKG_VER | grep -oE "[\.0-9]{1,}")
 
         local PKG_NAME=$(awk -F"=" '/PKG_NAME:=/ {print $NF}' $mk_path | grep -oE "[-_:/\$\(\)\?\.a-zA-Z0-9]{1,}")
@@ -983,26 +962,20 @@ remove_tweaked_packages() {
     fi
 }
 
-fix_gettext_compile_error() {
-    local patch_src="$BASE_PATH/patches/300-gettext-tools-define-bison-localedir.patch"
-    local gettext_path="$BUILD_DIR/package/libs/gettext-full"
-    local gettext_mk="$gettext_path/Makefile"
-    local patch_dest_dir="$gettext_path/patches"
+# 修复 gettext 编译问题
+# @description: 当 gettext-full 版本为 0.24.1 时，从 OpenWrt 官方仓库更新 gettext-full 和 bison 的 Makefile 以解决编译问题。
+# @see: https://raw.githubusercontent.com/openwrt/openwrt/refs/heads/main/package/libs/gettext-full/Makefile
+# @see: https://raw.githubusercontent.com/openwrt/openwrt/refs/heads/main/tools/bison/Makefile
+fix_gettext_compile() {
+    local gettext_makefile_path="$BUILD_DIR/package/libs/gettext-full/Makefile"
+    local bison_makefile_path="$BUILD_DIR/tools/bison/Makefile"
 
-    if [ ! -f "$gettext_mk" ]; then
-        echo "Warning: gettext-full Makefile not found at $gettext_mk. Skipping patch." >&2
-        return
-    fi
-
-    local pkg_version
-    pkg_version=$(grep -oP 'PKG_VERSION:=\s*\K[0-9.]+' "$gettext_mk")
-
-    if [ "$pkg_version" = "0.24.1" ]; then
-        echo "gettext-full version is $pkg_version, applying patch."
-        mkdir -p "$patch_dest_dir"
-        cp -f "$patch_src" "$patch_dest_dir/"
-    else
-        echo "gettext-full version is $pkg_version, no patch needed."
+    # 检查 gettext-full 的 Makefile 是否存在并且版本是否为 0.24.1
+    if [ -f "$gettext_makefile_path" ] && grep -q "PKG_VERSION:=0.24.1" "$gettext_makefile_path"; then
+        echo "检测到 gettext 版本为 0.24.1，正在更新 Makefiles..."
+        # 从 OpenWrt 官方仓库下载最新的 Makefile
+        curl -L -o "$gettext_makefile_path" "https://raw.githubusercontent.com/openwrt/openwrt/refs/heads/main/package/libs/gettext-full/Makefile"
+        curl -L -o "$bison_makefile_path" "https://raw.githubusercontent.com/openwrt/openwrt/refs/heads/main/tools/bison/Makefile"
     fi
 }
 
@@ -1038,7 +1011,6 @@ main() {
     update_nss_diag
     update_menu_location
     fix_compile_coremark
-    fix_gettext_compile_error
     update_dnsmasq_conf
     add_backup_info_to_sysupgrade
     optimize_smartDNS
@@ -1054,6 +1026,7 @@ main() {
     update_diskman
     set_nginx_default_config
     update_uwsgi_limit_as
+    fix_gettext_compile
     install_feeds
     support_fw4_adg
     update_script_priority
