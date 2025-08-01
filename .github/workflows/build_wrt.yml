@@ -26,10 +26,11 @@ on:
         required: true
         description: Runs on...
         type: choice
-        default: ubuntu-22.04
+        default: ubuntu-24.04
         options:
           - ubuntu-20.04
           - ubuntu-22.04
+          - ubuntu-24.04
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,36 +40,18 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
 
     steps:
-      - name: Maximize build space
-        uses: AdityaGarg8/remove-unwanted-software@v5
-        with:
-          remove-dotnet: "true"
-          remove-android: "true"
-          remove-haskell: "true"
-          remove-codeql: "true"
-          remove-docker-images: "true"
-          remove-large-packages: "true"
-          remove-cached-tools: "true"
-          remove-swapfile: "true"
+      - name: Free disk space
+        uses: sbwml/actions@free-disk
+
+      - name: Build System Setup
+        uses: sbwml/actions@openwrt-build-setup
 
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Initialization Environment
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-          sudo -E apt -yqq install dos2unix
-          sudo -E apt -yqq install libfuse-dev
-          sudo -E apt -yqq autoremove --purge
-          sudo -E apt -yqq autoclean
-          sudo -E apt -yqq clean
-          sudo -E systemctl daemon-reload
-          sudo -E timedatectl set-timezone "Asia/Shanghai"
-
       - name: Initialization Values
         run: |
+          sudo -E timedatectl set-timezone "Asia/Shanghai"
           export BUILD_DATE=$(TZ=UTC-8 date +"%y.%m.%d_%H.%M.%S")
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
 
