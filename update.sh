@@ -290,18 +290,6 @@ update_affinity_script() {
     fi
 }
 
-fix_build_for_openssl() {
-    local openssl_dir="$BUILD_DIR/package/libs/openssl"
-    local makefile="$openssl_dir/Makefile"
-    if [ -d "$(dirname "$makefile")" ] && [ -f "$makefile" ]; then
-        if grep -q "3.0.16" "$makefile"; then
-            # 替换本地openssl版本
-            rm -rf "$openssl_dir"
-            cp -rf "$BASE_PATH/patches/openssl" "$openssl_dir"
-        fi
-    fi
-}
-
 update_ath11k_fw() {
     local makefile="$BUILD_DIR/package/firmware/ath11k-firmware/Makefile"
     local new_mk="$BASE_PATH/patches/ath11k_fw.mk"
@@ -412,13 +400,14 @@ EOF
     chmod +x "$sh_dir/custom_task"
 }
 
-update_pw() {
-    local pw_share_dir="$BUILD_DIR/feeds/small8/luci-app-passwall/root/usr/share/passwall"
-    local smartdns_lua_path="$pw_share_dir/helper_smartdns_add.lua"
-    local rules_dir="$pw_share_dir/rules"
+# 清理 Passwall 的 chnlist 规则文件
+clear_passwall_chnlist() {
+    local chnlist_path="$BUILD_DIR/feeds/small8/luci-app-passwall/root/usr/share/passwall/rules/chnlist"
 
-    # 清空chnlist
-    [ -f "$rules_dir/chnlist" ] && echo "" >"$rules_dir/chnlist"
+    # 如果 chnlist 文件存在，则清空其内容
+    if [ -f "$chnlist_path" ]; then
+        > "$chnlist_path"
+    fi
 }
 
 install_opkg_distfeeds() {
@@ -456,17 +445,6 @@ set_build_signature() {
     local file="$BUILD_DIR/feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js"
     if [ -d "$(dirname "$file")" ] && [ -f $file ]; then
         sed -i "s/(\(luciversion || ''\))/(\1) + (' \/ build by ZqinKing')/g" "$file"
-    fi
-}
-
-fix_compile_vlmcsd() {
-    local dir="$BUILD_DIR/feeds/packages/net/vlmcsd"
-    local patch_src="$BASE_PATH/patches/001-fix_compile_with_ccache.patch"
-    local patch_dest="$dir/patches"
-
-    if [ -d "$dir" ]; then
-        mkdir -p "$patch_dest"
-        cp -f "$patch_src" "$patch_dest"
     fi
 }
 
@@ -693,54 +671,6 @@ add_gecoosac() {
     # 删除旧的目录（如果存在）
     rm -rf "$gecoosac_dir" 2>/dev/null
     git clone --depth 1 https://github.com/lwb1978/openwrt-gecoosac.git "$gecoosac_dir"
-}
-
-update_proxy_app_menu_location() {
-    # passwall
-    local passwall_path="$BUILD_DIR/package/feeds/small8/luci-app-passwall/luasrc/controller/passwall.lua"
-    if [ -d "${passwall_path%/*}" ] && [ -f "$passwall_path" ]; then
-        local pos=$(grep -n "entry" "$passwall_path" | head -n 1 | awk -F ":" '{print $1}')
-        if [ -n "$pos" ]; then
-            sed -i ''${pos}'i\	entry({"admin", "proxy"}, firstchild(), "Proxy", 30).dependent = false' "$passwall_path"
-            sed -i 's/"services"/"proxy"/g' "$passwall_path"
-        fi
-    fi
-
-    # homeproxy
-    local homeproxy_path="$BUILD_DIR/package/feeds/small8/luci-app-homeproxy/root/usr/share/luci/menu.d/luci-app-homeproxy.json"
-    if [ -d "${homeproxy_path%/*}" ] && [ -f "$homeproxy_path" ]; then
-        sed -i 's/\/services\//\/proxy\//g' "$homeproxy_path"
-    fi
-
-    # nikki
-    local nikki_path="$BUILD_DIR/package/feeds/small8/luci-app-nikki/root/usr/share/luci/menu.d/luci-app-nikki.json"
-    if [ -d "${nikki_path%/*}" ] && [ -f "$nikki_path" ]; then
-        sed -i 's/\/services\//\/proxy\//g' "$nikki_path"
-    fi
-}
-
-update_dns_app_menu_location() {
-    # smartdns
-    local smartdns_path="$BUILD_DIR/package/feeds/small8/luci-app-smartdns/luasrc/controller/smartdns.lua"
-    if [ -d "${smartdns_path%/*}" ] && [ -f "$smartdns_path" ]; then
-        local pos=$(grep -n "entry" "$smartdns_path" | head -n 1 | awk -F ":" '{print $1}')
-        if [ -n "$pos" ]; then
-            sed -i ''${pos}'i\	entry({"admin", "dns"}, firstchild(), "DNS", 29).dependent = false' "$smartdns_path"
-            sed -i 's/"services"/"dns"/g' "$smartdns_path"
-        fi
-    fi
-
-    # mosdns
-    local mosdns_path="$BUILD_DIR/package/feeds/small8/luci-app-mosdns/root/usr/share/luci/menu.d/luci-app-mosdns.json"
-    if [ -d "${mosdns_path%/*}" ] && [ -f "$mosdns_path" ]; then
-        sed -i 's/\/services\//\/dns\//g' "$mosdns_path"
-    fi
-
-    # AdGuardHome
-    local adg_path="$BUILD_DIR/package/feeds/small8/luci-app-adguardhome/luasrc/controller/AdGuardHome.lua"
-    if [ -d "${adg_path%/*}" ] && [ -f "$adg_path" ]; then
-        sed -i 's/"services"/"dns"/g' "$adg_path"
-    fi
 }
 
 fix_easytier() {
@@ -1009,18 +939,16 @@ main() {
     update_default_lan_addr
     remove_something_nss_kmod
     update_affinity_script
-    # fix_build_for_openssl
     update_ath11k_fw
     # fix_mkpkg_format_invalid
     change_cpuusage
     update_tcping
     add_ax6600_led
     set_custom_task
-    update_pw
+    clear_passwall_chnlist
     install_opkg_distfeeds
     update_nss_pbuf_performance
     set_build_signature
-    fix_compile_vlmcsd
     update_nss_diag
     update_menu_location
     fix_compile_coremark
@@ -1049,9 +977,6 @@ main() {
     update_package "containerd" "releases" "v1.7.27"
     update_package "docker" "tags" "v28.2.2"
     update_package "dockerd" "releases" "v28.2.2"
-    # update_package "xray-core"
-    # update_proxy_app_menu_location
-    # update_dns_app_menu_location
 }
 
 main "$@"
