@@ -1,0 +1,43 @@
+name: Scheduled Build
+
+on:
+  schedule:
+    - cron: 0 0 * * *
+  workflow_dispatch:     # 允许手动触发
+
+jobs:
+  trigger-builds:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 定义需要定时编译的设备列表（按需增减）
+        device:
+          - model: jdcloud_ipq60xx_immwrt
+            runs-on: ubuntu-22.04
+          - model: zn_m2_libwrt_nowifi
+            runs-on: ubuntu-22.04
+          # 添加更多设备配置...
+
+    steps:
+      - name: Pre Clone
+        run: ./pre_clone_action.sh ${{ inputs.model }}
+
+      - name: Fix file permissions and line endings
+        run: |
+          # 安装 dos2unix 工具
+          sudo apt-get update
+          sudo apt-get install -y dos2unix
+          
+          # 转换换行符为 Unix 格式
+          dos2unix ./update.sh
+          dos2unix ./update-x86.sh
+          dos2unix ./build.sh
+          dos2unix ./pre_clone_action.sh
+          
+          # 设置执行权限
+          chmod +x ./update.sh
+          chmod +x ./update-x86.sh
+          chmod +x ./build.sh
+          chmod +x ./pre_clone_action.sh
+
+      - name: Cache Dependencies
