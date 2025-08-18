@@ -17,3 +17,20 @@ jobs:
           - model: zn_m2_libwrt_nowifi
             runs-on: ubuntu-22.04
           # 添加更多设备配置...
+
+    steps:
+      - name: Trigger Release WRT Workflow
+        uses: octokit/request-action@v2.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          route: POST /repos/${{ github.repository }}/actions/workflows/release_wrt.yml/dispatches
+          headers: accept=application/vnd.github+json
+          data: |
+            {
+              "ref": "main",
+              "inputs": {
+                "model": "${{ matrix.device.model }}",
+                "runs-on": "${{ matrix.device.runs-on }}"
+              }
+            }
