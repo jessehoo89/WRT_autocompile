@@ -70,26 +70,6 @@ jobs:
       - name: Pre Clone
         run: ./pre_clone_action.sh x86-64
 
-      - name: Fix file permissions and line endings
-        run: |
-          # 安装 dos2unix 工具
-          sudo apt-get update
-          sudo apt-get install -y dos2unix
-          
-          # 转换换行符为 Unix 格式
-          dos2unix ./update.sh
-          dos2unix ./update-x86.sh
-          dos2unix ./build.sh
-          dos2unix ./pre_clone_action.sh
-          dos2unix ./set_dhcp.sh
-          
-          # 设置执行权限
-          chmod +x ./update.sh
-          chmod +x ./update-x86.sh
-          chmod +x ./build.sh
-          chmod +x ./pre_clone_action.sh
-          chmod +x ./set_dhcp.sh
-
       - name: inject set_dhcp_off script
         run: |
           sed -i '/^update_default_lan_addr() {/,/^}/ {
