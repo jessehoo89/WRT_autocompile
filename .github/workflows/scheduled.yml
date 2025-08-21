@@ -13,9 +13,7 @@ jobs:
         # 定义需要定时编译的设备列表（按需增减）
         device:
           - model: jdcloud_ipq60xx_libwrt
-            runs-on: ubuntu-22.04
           - model: zn_m2_libwrt_nowifi
-            runs-on: ubuntu-22.04
           # 添加更多设备配置...
 
     steps:
@@ -31,6 +29,5 @@ jobs:
               "ref": "main",
               "inputs": {
                 "model": "${{ matrix.device.model }}",
-                "runs-on": "${{ matrix.device.runs-on }}"
               }
             }
