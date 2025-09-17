@@ -1,4 +1,19 @@
 #!/usr/bin/env bash
+#
+# Copyright (C) 2025 ZqinKing
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 set -e
 set -o errexit
@@ -308,9 +323,15 @@ fix_hash_value() {
 apply_hash_fixes() {
     fix_hash_value \
         "$BUILD_DIR/package/feeds/packages/smartdns/Makefile" \
-        "150019a03f1ec2e4b5849740a72badf5ea094d5754bd59dd30119523a3ce9398" \
-        "abcb3d3bfa99297dfb92b8fb4f1f78d0948a01281fdfc76c9c460a2c3d5c7f79" \
+        "a7edb052fea61418c91c7a052f7eb1478fe6d844aec5e3eda0f2fcf82de29a10" \
+        "b11e175970e08115fe3b0d7a543fa8d3a6239d3c24eeecfd8cfd2fef3f52c6c9" \
         "smartdns"
+
+    fix_hash_value \
+        "$BUILD_DIR/package/feeds/packages/smartdns/Makefile" \
+        "a1c084dcc4fb7f87641d706b70168fc3c159f60f37d4b7eac6089ae68f0a18a1" \
+        "ab7d303a538871ae4a70ead2e90d35e24fcc36bc20f5b6c5d963a3e283ea43b1" \
+        "smartdns"    
 }
 
 update_ath11k_fw() {
