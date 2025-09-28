@@ -20,6 +20,9 @@ cd wrt_relese
 编译阿里云AP8220:  
 ./build.sh aliyun_ap8220_immwrt  
   
+编译奇虎360v6:  
+./build.sh qihoo_360v6_immwrt  
+  
 编译红米AX5:  
 ./build.sh redmi_ax5_immwrt  
   
