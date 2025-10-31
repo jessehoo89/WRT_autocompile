@@ -98,6 +98,13 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
     ./build.sh zn_m2_libwrt
     ```
 
+### Gemtek
+
+*   **W1701K**:
+    ```bash
+    ./build.sh gemtek_w1701k_immwrt
+    ```
+
 ### 其他
 
 *   **X64**:
