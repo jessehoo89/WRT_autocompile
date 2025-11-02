@@ -80,13 +80,6 @@ gemtek_w1701k_wifi_cfg() {
 	configure_wifi 0 1 EHT20 23 'Gemtek_W1701K' '12345678'
 	configure_wifi 1 44 EHT160 23 'Gemtek_W1701K_5G' '12345678'
 	configure_wifi 2 1 EHT320 23 'Gemtek_W1701K_6G' '12345678' 'sae'
-    uci set wireless.radio1.disabled='1'
-}
-
-gemtek_w1701k_wifi_cfg() {
-    configure_wifi 0 1 EHT20 22 'Gemtek_W1701K' '12345678'
-    configure_wifi 1 44 EHT160 21 'Gemtek_W1701K_5G' '12345678'
-    # configure_wifi 2 36 EHT80 23 'Gemtek_W1701K_6G' '12345678'
     uci set wireless.radio2.disabled='1'
 }
 
