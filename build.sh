@@ -112,6 +112,75 @@ mkdir -p "$FIRMWARE_DIR"
 find "$TARGET_DIR" -type f \( -name "*.bin" -o -name "*.manifest" -o -name "*efi.img.gz" -o -name "*.itb" -o -name "*.fip" -o -name "*.ubi" -o -name "*rootfs.tar.gz" \) -exec cp -f {} "$FIRMWARE_DIR/" \;
 \rm -f "$BASE_PATH/firmware/Packages.manifest" 2>/dev/null
 
+# 检查是否是 zn_m2_libwrt_nowifi 设备
+if [ "$Dev" = "zn_m2_libwrt_nowifi" ]; then
+    echo "Building kernel modules with the same kernel hash and generating repository index..."
+    
+    # 设置编译环境
+    cd "$BASE_PATH/$BUILD_DIR"
+    
+    # 获取内核 hash（从当前内核包版本中提取）
+    KERNEL_HASH=$(grep -m1 "CONFIG_VERSION_NUMBER=" package/kernel/linux/Makefile | cut -d '"' -f2 | cut -d '-' -f1)
+    echo "Using kernel hash: $KERNEL_HASH"
+    
+    # 编译所有 kernel modules
+    make package/kernel/linux/{clean,compile} -j$(($(nproc) + 1)) || make package/kernel/linux/compile -j1 V=s
+    
+    # 创建 kmod 目录
+    KMOD_DIR="$BASE_PATH/firmware/kmod"
+    \rm -rf "$KMOD_DIR" 2>/dev/null
+    mkdir -p "$KMOD_DIR"
+    
+    # 创建软件源结构
+    PKG_DIR="$BASE_PATH/firmware/kmod/packages"
+    mkdir -p "$PKG_DIR"
+    
+    # 复制所有 kernel 相关的 .ipk 文件
+    find "$BASE_PATH/$BUILD_DIR/bin" -name "*.ipk" -path "*/packages/*/kernel/*" -exec cp -f {} "$PKG_DIR/" \;
+    
+    # 生成软件源索引文件
+    echo "Generating repository index..."
+    
+    # 写入控制文件
+    ARCH=$(grep "CONFIG_TARGET_ARCH_PACKAGES=" .config | cut -d '"' -f2)
+    
+    # 创建架构目录
+    mkdir -p "$PKG_DIR/$ARCH"
+    mv $PKG_DIR/*.ipk "$PKG_DIR/$ARCH/" 2>/dev/null
+    
+    # 生成 Packages 索引
+    cat > "$KMOD_DIR/Packages" <<EOF
+Package: kernel
+Version: ${KERNEL_HASH}
+Architecture: ${ARCH}
+Description: Kernel modules for ${model} - auto-generated repository
+EOF
+    
+    # 添加所有软件包到索引
+    for ipk in $PKG_DIR/$ARCH/*.ipk; do
+        PKG_NAME=$(basename $ipk | cut -d_ -f1)
+        PKG_VERSION=$(basename $ipk | grep -oP '(?<=_)\d+\.\d+\.\d+(\.\d+)?(?=_)')
+        PKG_ARCH=$(basename $ipk | grep -oP '(?<=_).+?(?=.ipk)')
+        
+        cat >> "$KMOD_DIR/Packages" <<EOF
+Package: ${PKG_NAME}
+Version: ${PKG_VERSION}
+Architecture: ${PKG_ARCH}
+Filename: packages/${ARCH}/$(basename $ipk)
+Size: $(stat -c%s $ipk)
+SHA256sum: $(sha256sum $ipk | cut -d' ' -f1)
+Description: ${PKG_NAME} kernel module
+EOF
+    done
+    
+    # 生成 Packages.gz 压缩索引
+    gzip -9c "$KMOD_DIR/Packages" > "$KMOD_DIR/Packages.gz"
+    
+    # 添加版本信息
+    echo "$KERNEL_HASH" > "$KMOD_DIR/kernel.hash"
+    echo "Generated at $(date)" > "$KMOD_DIR/build.info"
+fi
+
 if [[ -d $BASE_PATH/action_build ]]; then
     make clean
 fi
