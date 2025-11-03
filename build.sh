@@ -114,87 +114,104 @@ find "$TARGET_DIR" -type f \( -name "*.bin" -o -name "*.manifest" -o -name "*efi
 
 # 检查是否是 zn_m2_libwrt_nowifi 设备
 if [ "$Dev" = "zn_m2_libwrt_nowifi" ]; then
-    echo "Building kernel modules with the same kernel hash and generating repository index..."
+    echo "Building ALL kernel modules and generating repository index..."
     
-    # 设置编译环境
     cd "$BASE_PATH/$BUILD_DIR"
     
-    # 更可靠的方法获取内核哈希 - 从实际编译的系统文件中获取
-    KERNEL_HASH=$(sed -n 's/.*CONFIG_VERSION_NUMBER="\(.*\)".*/\1/p' .config | cut -d'-' -f1)
-    if [ -z "$KERNEL_HASH" ]; then
-        echo "Warning: CONFIG_VERSION_NUMBER not available, using alternative method"
-        KERNEL_HASH=$(sed -n 's/.*CONFIG_EXTERNAL_KERNEL_TREE="\(.*\)".*/\1/p' .config | cut -d'-' -f1)
-    fi
+    # 1. 强制准备内核环境
+    make target/linux/prepare CONFIG_AUTOREMOVE=0 V=s
+    make package/kernel/linux/clean
+    make package/kernel/linux/prepare V=s
+    make package/kernel/linux/compile V=s
+    make package/kernel/linux/install V=s
     
-    if [ -z "$KERNEL_HASH" ]; then
-        echo "Error: Still unable to determine kernel hash. Falling back to default."
-        KERNEL_HASH="5.15.100"
-    fi
+    # 2. 获取所有内核相关包名
+    KMOD_PACKAGES=$(find package/ kernel/ -name Makefile | 
+                    xargs grep -l '^include \$(TOPDIR)\/package\/kernel' |
+                    xargs grep -m1 '^PKG_NAME' |
+                    awk -F': ' '{print $NF}'
+                   )
     
-    echo "Using kernel hash: $KERNEL_HASH"
+    KERNEL_PACKAGE=$(ls bin/targets/*/packages/kernel_* | head -n1 | xargs basename | sed 's/_.*//')
+    FIRMWARE_PACKAGES=$(find package/ -name Makefile | xargs grep '^include \$(TOPDIR)\/package\/firmware' -l | xargs grep '^PKG_NAME' -m1 | awk -F': ' '{print $NF}')
     
-    # 过滤出内核相关目标，避免 trojan-plus 等问题包干扰
-    awk '/^(Package:|Source:)/{pkg=substr($2,0,5)} pkg=="kmod-" || pkg=="bpf-" {print $2}' .config | \
-        xargs make package/{clean,compile} -j$(($(nproc) + 1)) || true
+    ALL_PACKAGES="$KERNEL_PACKAGE $KMOD_PACKAGES $FIRMWARE_PACKAGES"
     
-    # 创建 kmod 目录
+    echo "Identified packages:"
+    echo "$ALL_PACKAGES"
+    
+    # 3. 为编译所有 kmod 设置环境
+    touch .config
+    echo "CONFIG_ALL_KMODS=y" >> .config
+    
+    # 4. 编译所有内核相关包
+    for pkg in $ALL_PACKAGES; do
+        # 先清理
+        make package/$pkg/clean V=s
+        
+        # 并行编译 (失败时回退)
+        echo "Compiling $pkg..."
+        make package/$pkg/compile -j$(($(nproc) + 1)) V=sc || \
+        make package/$pkg/compile -j1 V=s
+    done
+    
+    # 5. 收集所有 ipk 文件
     KMOD_DIR="$BASE_PATH/firmware/kmod"
     \rm -rf "$KMOD_DIR" 2>/dev/null
-    mkdir -p "$KMOD_DIR"
-    
-    # 创建软件源结构
-    PKG_DIR="$BASE_PATH/firmware/kmod/packages"
+    PKG_DIR="$KMOD_DIR/packages"
     mkdir -p "$PKG_DIR"
     
-    # 复制所有 kernel 相关的 .ipk 文件
-    find "$BASE_PATH/$BUILD_DIR/bin" -type f -name "kmod-*.ipk" -o -name "bpf-*.ipk" -exec cp -f {} "$PKG_DIR/" \;
+    find "$BASE_PATH/$BUILD_DIR/bin/targets" -type f \( \
+        -name "kmod-*.ipk" \
+        -o -name "bpf-*.ipk" \
+        -o -name "$KERNEL_PACKAGE-*.ipk" \
+        -o -name "firmware-*.ipk" \
+        \) ! -name "*host*" \
+        -exec cp -fv {} "$PKG_DIR/" \;
+    # 6. 生成软件源索引
+    echo "Generating repository index in $PKG_DIR ..."
+    cd "$PKG_DIR"
     
-    if [ -z "$(ls -A $PKG_DIR)" ]; then
-        echo "Warning: No kernel modules found! Skipping repository index generation."
+    # 确定目标架构
+    TARGET_ARCH=$(ls . | grep "kmod-" | head -n1 | cut -d_ -f3-)
+    echo "Detected target architecture: $TARGET_ARCH"
+    
+    # 完整索引生成流程
+    echo "Creating package manifest..."
+    # 创建包清单文件
+    find . -maxdepth 1 -name "*.ipk" | while read pkg; do
+        file_size=$(stat -c "%s" "$pkg")
+        md5sum=$(md5sum "$pkg" | cut -d' ' -f1)
+        echo "Package: $(basename "$pkg" | cut -d_ -f1)" >> Packages.manifest
+        echo "Version: $(basename "$pkg" | cut -d_ -f2)" >> Packages.manifest
+        echo "Depends: " $(ar t "$pkg" | grep ^control.tar | xargs -n1 tar -Ox | grep -Po 'Depends:.*' | cut -d: -f2- || echo "") >> Packages.manifest
+        echo "Filename: packages/$pkg" >> Packages.manifest
+        echo "Size: $file_size" >> Packages.manifest
+        echo "MD5Sum: $md5sum" >> Packages.manifest
+        echo "Architecture: $TARGET_ARCH" >> Packages.manifest
+        echo "" >> Packages.manifest
+    done
+    
+    # 创建压缩索引
+    echo "Creating compressed Packages file..."
+    {
+        echo "Architecture: $TARGET_ARCH"
+        echo
+        cat Packages.manifest
+    } > Packages
+    gzip -9c Packages > Packages.gz
+    
+    # 清理临时文件
+    rm -f Packages.manifest
+    
+    echo "Kmod repository index generated at $PKG_DIR/Packages.gz"
+    
+    # 7. 可选：创建 Packages 签名
+    if [ -f "$BASE_PATH/$BUILD_DIR/staging_dir/host/bin/usign" ]; then
+        echo "Signing repository index..."
+        "$BASE_PATH/$BUILD_DIR/staging_dir/host/bin/usign" -S -m Packages -s "$BASE_PATH/sign.key"
     else
-        # 生成软件源索引文件
-        echo "Generating repository index..."
-        
-        # 写入控制文件
-        ARCH=$(grep "CONFIG_TARGET_ARCH_PACKAGES=" .config | cut -d '"' -f2)
-        
-        # 创建架构目录
-        mkdir -p "$PKG_DIR/$ARCH"
-        mv $PKG_DIR/*.ipk "$PKG_DIR/$ARCH/" 2>/dev/null
-        
-        # 生成 Packages.in 索引文件
-        cat > "$KMOD_DIR/Packages.in" <<EOF
-Package: kernel
-Version: ${KERNEL_HASH}
-Architecture: ${ARCH}
-Description: Kernel modules for ${model} - auto-generated repository
-EOF
-        
-        # 添加所有软件包到索引
-        cd "$PKG_DIR/$ARCH"
-        for ipk in *.ipk; do
-            PKG_NAME=$(basename $ipk | cut -d'_' -f1)
-            PKG_VERSION=$(basename $ipk | awk -F'_' '{print $2}')
-            PKG_ARCH=$(basename $ipk | awk -F'_' '{print $3}' | sed 's/\.ipk//')
-            
-            cat >> "$KMOD_DIR/Packages.in" <<EOF
-Package: ${PKG_NAME}
-Version: ${PKG_VERSION}
-Architecture: ${PKG_ARCH}
-Filename: packages/${ARCH}/${ipk}
-Size: $(stat -c%s $ipk)
-SHA256sum: $(sha256sum $ipk | cut -d' ' -f1)
-Description: ${PKG_NAME} kernel module
-EOF
-        done
-        
-        # 生成 Packages.gz 压缩索引
-        gzip -9c "$KMOD_DIR/Packages.in" > "$KMOD_DIR/Packages.gz"
-        mv "$KMOD_DIR/Packages.in" "$KMOD_DIR/Packages"
-        
-        # 添加版本信息
-        echo "$KERNEL_HASH" > "$KMOD_DIR/kernel.hash"
-        date > "$KMOD_DIR/build.info"
+        echo "Warning: usign not found, skipping repository signing"
     fi
 fi
 
