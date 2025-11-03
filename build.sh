@@ -119,12 +119,23 @@ if [ "$Dev" = "zn_m2_libwrt_nowifi" ]; then
     # 设置编译环境
     cd "$BASE_PATH/$BUILD_DIR"
     
-    # 获取内核 hash（从当前内核包版本中提取）
-    KERNEL_HASH=$(grep -m1 "CONFIG_VERSION_NUMBER=" package/kernel/linux/Makefile | cut -d '"' -f2 | cut -d '-' -f1)
+    # 更可靠的方法获取内核哈希 - 从实际编译的系统文件中获取
+    KERNEL_HASH=$(sed -n 's/.*CONFIG_VERSION_NUMBER="\(.*\)".*/\1/p' .config | cut -d'-' -f1)
+    if [ -z "$KERNEL_HASH" ]; then
+        echo "Warning: CONFIG_VERSION_NUMBER not available, using alternative method"
+        KERNEL_HASH=$(sed -n 's/.*CONFIG_EXTERNAL_KERNEL_TREE="\(.*\)".*/\1/p' .config | cut -d'-' -f1)
+    fi
+    
+    if [ -z "$KERNEL_HASH" ]; then
+        echo "Error: Still unable to determine kernel hash. Falling back to default."
+        KERNEL_HASH="5.15.100"
+    fi
+    
     echo "Using kernel hash: $KERNEL_HASH"
     
-    # 编译所有 kernel modules
-    make package/kernel/linux/{clean,compile} -j$(($(nproc) + 1)) || make package/kernel/linux/compile -j1 V=s
+    # 过滤出内核相关目标，避免 trojan-plus 等问题包干扰
+    awk '/^(Package:|Source:)/{pkg=substr($2,0,5)} pkg=="kmod-" || pkg=="bpf-" {print $2}' .config | \
+        xargs make package/{clean,compile} -j$(($(nproc) + 1)) || true
     
     # 创建 kmod 目录
     KMOD_DIR="$BASE_PATH/firmware/kmod"
@@ -136,49 +147,55 @@ if [ "$Dev" = "zn_m2_libwrt_nowifi" ]; then
     mkdir -p "$PKG_DIR"
     
     # 复制所有 kernel 相关的 .ipk 文件
-    find "$BASE_PATH/$BUILD_DIR/bin" -name "*.ipk" -path "*/packages/*/kernel/*" -exec cp -f {} "$PKG_DIR/" \;
+    find "$BASE_PATH/$BUILD_DIR/bin" -type f -name "kmod-*.ipk" -o -name "bpf-*.ipk" -exec cp -f {} "$PKG_DIR/" \;
     
-    # 生成软件源索引文件
-    echo "Generating repository index..."
-    
-    # 写入控制文件
-    ARCH=$(grep "CONFIG_TARGET_ARCH_PACKAGES=" .config | cut -d '"' -f2)
-    
-    # 创建架构目录
-    mkdir -p "$PKG_DIR/$ARCH"
-    mv $PKG_DIR/*.ipk "$PKG_DIR/$ARCH/" 2>/dev/null
-    
-    # 生成 Packages 索引
-    cat > "$KMOD_DIR/Packages" <<EOF
+    if [ -z "$(ls -A $PKG_DIR)" ]; then
+        echo "Warning: No kernel modules found! Skipping repository index generation."
+    else
+        # 生成软件源索引文件
+        echo "Generating repository index..."
+        
+        # 写入控制文件
+        ARCH=$(grep "CONFIG_TARGET_ARCH_PACKAGES=" .config | cut -d '"' -f2)
+        
+        # 创建架构目录
+        mkdir -p "$PKG_DIR/$ARCH"
+        mv $PKG_DIR/*.ipk "$PKG_DIR/$ARCH/" 2>/dev/null
+        
+        # 生成 Packages.in 索引文件
+        cat > "$KMOD_DIR/Packages.in" <<EOF
 Package: kernel
 Version: ${KERNEL_HASH}
 Architecture: ${ARCH}
 Description: Kernel modules for ${model} - auto-generated repository
 EOF
-    
-    # 添加所有软件包到索引
-    for ipk in $PKG_DIR/$ARCH/*.ipk; do
-        PKG_NAME=$(basename $ipk | cut -d_ -f1)
-        PKG_VERSION=$(basename $ipk | grep -oP '(?<=_)\d+\.\d+\.\d+(\.\d+)?(?=_)')
-        PKG_ARCH=$(basename $ipk | grep -oP '(?<=_).+?(?=.ipk)')
         
-        cat >> "$KMOD_DIR/Packages" <<EOF
+        # 添加所有软件包到索引
+        cd "$PKG_DIR/$ARCH"
+        for ipk in *.ipk; do
+            PKG_NAME=$(basename $ipk | cut -d'_' -f1)
+            PKG_VERSION=$(basename $ipk | awk -F'_' '{print $2}')
+            PKG_ARCH=$(basename $ipk | awk -F'_' '{print $3}' | sed 's/\.ipk//')
+            
+            cat >> "$KMOD_DIR/Packages.in" <<EOF
 Package: ${PKG_NAME}
 Version: ${PKG_VERSION}
 Architecture: ${PKG_ARCH}
-Filename: packages/${ARCH}/$(basename $ipk)
+Filename: packages/${ARCH}/${ipk}
 Size: $(stat -c%s $ipk)
 SHA256sum: $(sha256sum $ipk | cut -d' ' -f1)
 Description: ${PKG_NAME} kernel module
 EOF
-    done
-    
-    # 生成 Packages.gz 压缩索引
-    gzip -9c "$KMOD_DIR/Packages" > "$KMOD_DIR/Packages.gz"
-    
-    # 添加版本信息
-    echo "$KERNEL_HASH" > "$KMOD_DIR/kernel.hash"
-    echo "Generated at $(date)" > "$KMOD_DIR/build.info"
+        done
+        
+        # 生成 Packages.gz 压缩索引
+        gzip -9c "$KMOD_DIR/Packages.in" > "$KMOD_DIR/Packages.gz"
+        mv "$KMOD_DIR/Packages.in" "$KMOD_DIR/Packages"
+        
+        # 添加版本信息
+        echo "$KERNEL_HASH" > "$KMOD_DIR/kernel.hash"
+        date > "$KMOD_DIR/build.info"
+    fi
 fi
 
 if [[ -d $BASE_PATH/action_build ]]; then
