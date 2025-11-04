@@ -106,6 +106,16 @@ fi
 make download -j$(($(nproc) * 2))
 make -j$(($(nproc) + 1)) || make -j1 V=s
 
+TARGET_PACKAGES_DIR="$TARGET_DIR/qualcommax/ipq60xx"
+KMOD_DEST_DIR="$BASE_PATH/firmware/kmod"
+mkdir -p "$KMOD_DEST_DIR"
+# 复制Packages*和index.json等软件源文件
+cp -f "$TARGET_PACKAGES_DIR"/{Packages*,index.json} "$KMOD_DEST_DIR/" 2>/dev/null || true
+# 复制packages目录及其内容
+if [ -d "$TARGET_PACKAGES_DIR/packages" ]; then
+    cp -rf "$TARGET_PACKAGES_DIR/packages" "$KMOD_DEST_DIR/"
+fi
+
 FIRMWARE_DIR="$BASE_PATH/firmware"
 \rm -rf "$FIRMWARE_DIR"
 mkdir -p "$FIRMWARE_DIR"
