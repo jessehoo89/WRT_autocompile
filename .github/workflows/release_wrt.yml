@@ -136,5 +136,5 @@ jobs:
           tag_name: ${{ env.BUILD_DATE }}_${{ inputs.model }}
           files: |
             ${{ inputs.model == 'n1_immwrt' && env.PACKAGED_OUTPUTPATH || './firmware' }}/*.*
-            ./firmware/kmod/**
+            ./firmware/kmod-repo-*.tar.gz
           body_path: ./release_body.txt

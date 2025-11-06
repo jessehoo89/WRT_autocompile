@@ -112,15 +112,13 @@ mkdir -p "$FIRMWARE_DIR"
 find "$TARGET_DIR" -type f \( -name "*.bin" -o -name "*.manifest" -o -name "*efi.img.gz" -o -name "*.itb" -o -name "*.fip" -o -name "*.ubi" -o -name "*rootfs.tar.gz" \) -exec cp -f {} "$FIRMWARE_DIR/" \;
 \rm -f "$BASE_PATH/firmware/Packages.manifest" 2>/dev/null
 
-TARGET_PACKAGES_DIR="$TARGET_DIR/qualcommax/ipq60xx"
-KMOD_DEST_DIR="$BASE_PATH/firmware/kmod"
-mkdir -p "$KMOD_DEST_DIR"
-# 复制Packages*和index.json等软件源文件
-cp -f "$TARGET_PACKAGES_DIR"/{Packages*,index.json} "$KMOD_DEST_DIR/" 2>/dev/null || true
-# 复制packages目录及其内容
-if [ -d "$TARGET_PACKAGES_DIR/packages" ]; then
-    cp -rf "$TARGET_PACKAGES_DIR/packages" "$KMOD_DEST_DIR/"
+# 提取并打包 kmod 软件源
+if [ -f "$BASE_PATH/extract_kmod_repo.sh" ]; then
+  chmod +x "$BASE_PATH/extract_kmod_repo.sh"
+  "$BASE_PATH/extract_kmod_repo.sh" "$BASE_PATH/$BUILD_DIR"
 fi
+# 复制 kmod 压缩包到 firmware 目录，便于发布
+find "$BASE_PATH/$BUILD_DIR/bin/targets/qualcommax/ipq60xx" -name "kmod-repo-*.tar.gz" -exec cp {} "$FIRMWARE_DIR/" \;
 
 if [[ -d $BASE_PATH/action_build ]]; then
     make clean
