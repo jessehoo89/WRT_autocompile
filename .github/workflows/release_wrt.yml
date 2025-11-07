@@ -27,6 +27,7 @@ on:
           - zn_m2_libwrt
           - zn_m2_libwrt_nowifi
           - x64_immwrt
+          - zte_e8820s_lede_nowifi
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
