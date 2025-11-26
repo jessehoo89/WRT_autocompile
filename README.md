@@ -17,7 +17,7 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 
 1.  克隆仓库：
     ```bash
-    git clone https://github.com/ZqinKing/wrt_release.git
+    git clone https://github.com/jessehoo89/WRT_autocompile.git
     ```
 2.  进入目录：
     ```bash
@@ -125,3 +125,10 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 1.  打开系统设置 → 启动项 → 定位到「appfilter」
 2.  将「appfilter」当前状态**从已禁用更改为已启用**
 3.  完成配置后，点击**启动**按钮激活服务
+
+## 7. kmod包编译
+
+以下项目在固件编译过程中将同时编译所有kmod，生成索引和密钥并打包
+
+jdcloud_ipq60xx_libwrt_kmod
+zn_m2_libwrt_nowifi
