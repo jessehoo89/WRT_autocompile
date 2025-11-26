@@ -131,4 +131,5 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 以下项目在固件编译过程中将同时编译所有kmod，生成索引和密钥并打包
 
 jdcloud_ipq60xx_libwrt_kmod
+
 zn_m2_libwrt_nowifi
