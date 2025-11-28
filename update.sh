@@ -1095,6 +1095,15 @@ update_nginx_ubus_module() {
     fi
 }
 
+remove_attendedsysupgrade() {
+    find "$BUILD_DIR/feeds/luci/collections" -name "Makefile" | while read -r makefile; do
+        if grep -q "luci-app-attendedsysupgrade" "$makefile"; then
+            sed -i "/luci-app-attendedsysupgrade/d" "$makefile"
+            echo "Removed luci-app-attendedsysupgrade from $makefile"
+        fi
+    done
+}
+
 main() {
     clone_repo
     clean_up
@@ -1142,6 +1151,7 @@ main() {
     check_default_settings
     install_opkg_distfeeds
     fix_easytier_mk
+    remove_attendedsysupgrade
     install_feeds
     fix_easytier_lua
     update_adguardhome
