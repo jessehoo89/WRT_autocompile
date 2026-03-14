@@ -17,6 +17,7 @@ on:
           - jdcloud_ipq60xx_immwrt
           - jdcloud_ipq60xx_libwrt
           - jdcloud_ipq60xx_libwrt_kmod
+          - link_nn6000v2_immwrt
           - linksys_mx4x00_immwrt
           - n1_immwrt
           - qihoo_360v6_immwrt
@@ -55,21 +56,21 @@ jobs:
           sudo -E systemctl daemon-reload
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Set Build Date and Timezone
         run: |
           sudo -E timedatectl set-timezone "Asia/Shanghai"
           export BUILD_DATE=$(TZ=UTC-8 date +"%y.%m.%d_%H.%M.%S")
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
-          export BUILD_SRC=$(awk -F"=" '/REPO_URL/ {print $NF}' "./compilecfg/${{ inputs.model }}.ini")
+          export BUILD_SRC=$(awk -F"=" '/REPO_URL/ {print $NF}' "./wrt_core/compilecfg/${{ inputs.model }}.ini")
           echo "BUILD_SRC=$BUILD_SRC" >> $GITHUB_ENV
 
       - name: Pre Clone
-        run: ./pre_clone_action.sh ${{ inputs.model }}
+        run: ./wrt_core/pre_clone_action.sh ${{ inputs.model }}
 
       - name: Cache Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.2
         with:
           path: |
             ./action_build/.ccache
@@ -133,7 +134,7 @@ jobs:
           echo "$(grep -oP "luci-app(-[a-zA-Z0-9]{1,}){1,}" ./firmware/*.manifest | awk -F":" '{print $NF}')"  >> release_body.txt
 
       - name: Release Firmware
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.5.0
         with:
           tag_name: ${{ env.BUILD_DATE }}_${{ inputs.model }}
           files: |

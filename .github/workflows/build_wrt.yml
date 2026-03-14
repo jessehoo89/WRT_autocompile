@@ -16,6 +16,7 @@ on:
           - jdcloud_ax6000_immwrt
           - jdcloud_ipq60xx_immwrt
           - jdcloud_ipq60xx_libwrt
+          - link_nn6000v2_immwrt
           - linksys_mx4x00_immwrt
           - qihoo_360v6_immwrt
           - redmi_ax5_immwrt
@@ -51,7 +52,7 @@ jobs:
           sudo -E systemctl daemon-reload
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Set Build Date and Timezone
         run: |
@@ -60,10 +61,10 @@ jobs:
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
 
       - name: Pre Clone
-        run: ./pre_clone_action.sh ${{ inputs.model }}
+        run: ./wrt_core/pre_clone_action.sh ${{ inputs.model }}
 
       - name: Cache Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.2
         with:
           path: |
             ./action_build/.ccache
@@ -103,7 +104,7 @@ jobs:
           echo "=============================================="
 
       - name: Upload Firmware
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ env.BUILD_DATE }}_${{ inputs.model }}
           path: ./firmware/*.*
