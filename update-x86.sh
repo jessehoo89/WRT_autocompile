@@ -217,12 +217,17 @@ fix_miniupnpd() {
 }
 
 fix_ubus_gcc14() {
-    # Fix GCC 14 compile error: format not a string literal
+    # Fix GCC 14 compile error: format not a string literal for both libubox and ubus
+    local libubox_dir="$BUILD_DIR/package/libs/libubox"
     local ubus_dir="$BUILD_DIR/package/system/ubus"
-    local patch_file="999-ubus-demote-format-nonliteral.patch"
+    local libubox_patch="999-libubox-demote-format-nonliteral.patch"
+    local ubus_patch="999-ubus-demote-format-nonliteral.patch"
 
-    if [ -d "$ubus_dir" ] && [ -f "$BASE_PATH/wrt_core/patches/$patch_file" ]; then
-        install -Dm644 "$BASE_PATH/wrt_core/patches/$patch_file" "$ubus_dir/patches/$patch_file"
+    if [ -d "$libubox_dir" ] && [ -f "$BASE_PATH/wrt_core/patches/$libubox_patch" ]; then
+        install -Dm644 "$BASE_PATH/wrt_core/patches/$libubox_patch" "$libubox_dir/patches/$libubox_patch"
+    fi
+    if [ -d "$ubus_dir" ] && [ -f "$BASE_PATH/wrt_core/patches/$ubus_patch" ]; then
+        install -Dm644 "$BASE_PATH/wrt_core/patches/$ubus_patch" "$ubus_dir/patches/$ubus_patch"
     fi
 }
 
