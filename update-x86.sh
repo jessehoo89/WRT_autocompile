@@ -216,6 +216,16 @@ fix_miniupnpd() {
     fi
 }
 
+fix_ubus_gcc14() {
+    # Fix GCC 14 compile error: format not a string literal
+    local ubus_dir="$BUILD_DIR/package/system/ubus"
+    local patch_file="999-ubus-demote-format-nonliteral.patch"
+
+    if [ -d "$ubus_dir" ] && [ -f "$BASE_PATH/wrt_core/patches/$patch_file" ]; then
+        install -Dm644 "$BASE_PATH/wrt_core/patches/$patch_file" "$ubus_dir/patches/$patch_file"
+    fi
+}
+
 change_dnsmasq2full() {
     if ! grep -q "dnsmasq-full" $BUILD_DIR/include/target.mk; then
         sed -i 's/dnsmasq/dnsmasq-full/g' ./include/target.mk
@@ -645,7 +655,13 @@ add_gecoosac() {
     local gecoosac_dir="$BUILD_DIR/package/openwrt-gecoosac"
     # 删除旧的目录（如果存在）
     rm -rf "$gecoosac_dir" 2>/dev/null
-    git clone --depth 1 https://github.com/lwb1978/openwrt-gecoosac.git "$gecoosac_dir"
+    # 重试最多3次处理GitHub偶尔限流
+    for i in {1..3}; do
+        git clone --depth 1 https://github.com/lwb1978/openwrt-gecoosac.git "$gecoosac_dir" && break
+        echo "Clone failed, retrying $i..."
+        sleep 5
+        rm -rf "$gecoosac_dir" 2>/dev/null
+    done
 }
 
 fix_easytier() {
@@ -878,6 +894,7 @@ main() {
     update_homeproxy
     fix_default_set
     fix_miniupnpd
+    fix_ubus_gcc14
     update_golang
     change_dnsmasq2full
     fix_mk_def_depends
