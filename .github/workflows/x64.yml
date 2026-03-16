@@ -64,11 +64,11 @@ jobs:
         run: |
           export BUILD_DATE=$(TZ=UTC-8 date +"%y.%m.%d_%H.%M.%S")
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
-          export BUILD_SRC=$(awk -F"=" '/REPO_URL/ {print $NF}' "./compilecfg/x86-64.ini")
+          export BUILD_SRC=$(awk -F"=" '/REPO_URL/ {print $NF}' "./wrt_core/compilecfg/x86-64.ini")
           echo "BUILD_SRC=$BUILD_SRC" >> $GITHUB_ENV
 
       - name: Pre Clone
-        run: ./pre_clone_action.sh x86-64
+        run: ./wrt_core/pre_clone_action.sh x86-64
 
       - name: inject set_dhcp_off script
         run: |
@@ -78,8 +78,8 @@ jobs:
           set_dhcp_off() {\
               /bin/sh "$GITHUB_WORKSPACE/set_dhcp.sh"\
           }
-          }' update-x86.sh
-          sed -i '/^[[:space:]]*update_default_lan_addr$/a\    set_dhcp_off' update-x86.sh
+          }' ./wrt_core/update-x86.sh
+          sed -i '/^[[:space:]]*update_default_lan_addr$/a\    set_dhcp_off' ./wrt_core/update-x86.sh
           chmod +x set_dhcp.sh
           
       - name: Cache Dependencies

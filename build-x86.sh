@@ -8,8 +8,8 @@ BASE_PATH=$(cd $(dirname $0) && pwd)
 Dev=$1
 Build_Mod=$2
 
-CONFIG_FILE="$BASE_PATH/deconfig/$Dev.config"
-INI_FILE="$BASE_PATH/compilecfg/$Dev.ini"
+CONFIG_FILE="$BASE_PATH/wrt_core/deconfig/$Dev.config"
+INI_FILE="$BASE_PATH/wrt_core/compilecfg/$Dev.ini"
 
 if [[ ! -f $CONFIG_FILE ]]; then
     echo "Config not found: $CONFIG_FILE"
