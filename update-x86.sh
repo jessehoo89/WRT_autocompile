@@ -218,6 +218,7 @@ fix_miniupnpd() {
 
 fix_ubus_gcc14() {
     # Fix GCC 14 compile error: format not a string literal for both libubox and ubus
+    # The error happens even in fortify/stdio.h because of macro expansion
     local libubox_dir="$BUILD_DIR/package/libs/libubox"
     local ubus_dir="$BUILD_DIR/package/system/ubus"
     local libubox_patch="999-libubox-demote-format-nonliteral.patch"
@@ -229,6 +230,21 @@ fix_ubus_gcc14() {
     if [ -d "$ubus_dir" ] && [ -f "$BASE_PATH/wrt_core/patches/$ubus_patch" ]; then
         install -Dm644 "$BASE_PATH/wrt_core/patches/$ubus_patch" "$ubus_dir/patches/$ubus_patch"
     fi
+    
+    # FORTIFY_SOURCE: fix for GCC 14 strict check - disable format-nonliteral error globally
+    if [ -f "$BUILD_DIR/include/fortify/stdio.h" ]; then
+        # Comment out the _FORTIFY_GCC_WARN_FORMAT_NONLITERAL that adds -Werror=format-nonliteral
+        # This is needed because macro expansions trigger false positives
+        sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/stdio.h" 2>/dev/null || true
+        sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/stdio.h" 2>/dev/null || true
+    fi
+    
+    # Fix all other fortify headers just in case
+    for header in stdio.h stdarg.h string.h; do
+        if [ -f "$BUILD_DIR/include/fortify/$header" ]; then
+            sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/$header" 2>/dev/null || true
+        fi
+    done
 }
 
 change_dnsmasq2full() {
