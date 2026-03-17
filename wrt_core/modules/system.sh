@@ -691,6 +691,50 @@ install_libubox_cmake_patch() {
     fi
 }
 
+install_ubus_cmake_patch() {
+    local ubus_pkg_dir="$BUILD_DIR/package/system/ubus"
+    local patch_file="999-ubus-demote-format-nonliteral.patch"
+
+    if [ ! -d "$ubus_pkg_dir" ]; then
+        echo "错误：ubus 包目录不存在: $ubus_pkg_dir" >&2
+        return 1
+    fi
+
+    mkdir -p "$ubus_pkg_dir/patches"
+
+    if [ -f "$BASE_PATH/patches/$patch_file" ]; then
+        install -Dm644 "$BASE_PATH/patches/$patch_file" "$ubus_pkg_dir/patches/$patch_file"
+        echo "已安装 ubus CMakeLists 补丁: $patch_file"
+    else
+        echo "错误：补丁文件不存在: $BASE_PATH/patches/$patch_file" >&2
+        return 1
+    fi
+
+    if [ ! -f "$ubus_pkg_dir/patches/$patch_file" ]; then
+        echo "错误：补丁安装失败: $ubus_pkg_dir/patches/$patch_file" >&2
+        return 1
+    fi
+}
+
+fix_gcc14_fortify() {
+    # FORTIFY_SOURCE: fix for GCC 14 strict check - disable format-nonliteral error globally
+    # This is needed because macro expansion in fortify/stdio.h still triggers the error
+    if [ -f "$BUILD_DIR/include/fortify/stdio.h" ]; then
+        # Comment out the line that adds -Werror=format-nonliteral
+        sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/stdio.h" 2>/dev/null || true
+        sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/stdio.h" 2>/dev/null || true
+    fi
+
+    # Fix all other fortify headers just in case
+    for header in stdio.h stdarg.h string.h; do
+        if [ -f "$BUILD_DIR/include/fortify/$header" ]; then
+            sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/$header" 2>/dev/null || true
+        fi
+    done
+
+    echo "GCC 14 format-nonliteral error修复完成"
+}
+
 fix_ubus_gcc14() {
     # Fix GCC 14 compile error: format not a string literal
     # Install patches for both libubox and ubus
