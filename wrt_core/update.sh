@@ -98,6 +98,7 @@ main() {
     fix_quectel_cm
     install_pbr_cmcc
     fix_pbr_ip_forward
+    fix_ubus_gcc14
     update_package "runc" "releases" "v1.3.3"
     update_package "containerd" "releases" "v1.7.28"
     update_package "docker" "tags" "v28.5.2"
