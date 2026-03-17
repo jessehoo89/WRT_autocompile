@@ -123,8 +123,16 @@ update_ath11k_fw() {
 
     if [ -d "$(dirname "$makefile")" ]; then
         echo "正在更新 ath11k-firmware Makefile..."
-        if ! curl -fsSL -o "$new_mk" "$url"; then
-            echo "错误：从 $url 下载 ath11k-firmware Makefile 失败" >&2
+        # 重试最多 3 次处理 GitHub 网络限流
+        for i in {1..3}; do
+            if curl -fsSL -o "$new_mk" "$url"; then
+                break
+            fi
+            echo "下载失败，重试 $i/3..."
+            sleep 5
+        done
+        if [ ! -f "$new_mk" ] || [ ! -s "$new_mk" ]; then
+            echo "错误：从 $url 下载 ath11k-firmware Makefile 失败，多次重试后仍失败" >&2
             exit 1
         fi
         if [ ! -s "$new_mk" ]; then
@@ -132,6 +140,7 @@ update_ath11k_fw() {
             exit 1
         fi
         mv -f "$new_mk" "$makefile"
+        echo "ath11k-firmware Makefile 更新完成"
     fi
 }
 
@@ -186,8 +195,17 @@ update_tcping() {
 
     if [ -d "$(dirname "$tcping_path")" ]; then
         echo "正在更新 tcping Makefile..."
-        if ! curl -fsSL -o "$tcping_path" "$url"; then
-            echo "错误：从 $url 下载 tcping Makefile 失败" >&2
+        # 重试最多 3 次处理 GitHub 网络限流
+        rm -f "$tcping_path"
+        for i in {1..3}; do
+            if curl -fsSL -o "$tcping_path" "$url"; then
+                break
+            fi
+            echo "下载失败，重试 $i/3..."
+            sleep 5
+        done
+        if [ ! -f "$tcping_path" ] || [ ! -s "$tcping_path" ]; then
+            echo "错误：从 $url 下载 tcping Makefile 失败，多次重试后仍失败" >&2
             exit 1
         fi
     fi
@@ -347,8 +365,17 @@ fix_quickstart() {
     local url="https://gist.githubusercontent.com/puteulanus/1c180fae6bccd25e57eb6d30b7aa28aa/raw/istore_backend.lua"
     if [ -f "$file_path" ]; then
         echo "正在修复 quickstart..."
-        if ! curl -fsSL -o "$file_path" "$url"; then
-            echo "错误：从 $url 下载 istore_backend.lua 失败" >&2
+        # 重试最多 3 次处理 GitHub 网络限流
+        rm -f "$file_path"
+        for i in {1..3}; do
+            if curl -fsSL -o "$file_path" "$url"; then
+                break
+            fi
+            echo "下载失败，重试 $i/3..."
+            sleep 5
+        done
+        if [ ! -f "$file_path" ] || [ ! -s "$file_path" ]; then
+            echo "错误：从 $url 下载 istore_backend.lua 失败，多次重试后仍失败" >&2
             exit 1
         fi
     fi
@@ -662,4 +689,50 @@ install_libubox_cmake_patch() {
         echo "错误：补丁安装失败: $libubox_pkg_dir/patches/$patch_file" >&2
         return 1
     fi
+}
+
+fix_ubus_gcc14() {
+    # Fix GCC 14 compile error: format not a string literal
+    # Install patches for both libubox and ubus
+    install_libubox_cmake_patch
+
+    local ubus_pkg_dir="$BUILD_DIR/package/system/ubus"
+    local patch_file="999-ubus-demote-format-nonliteral.patch"
+
+    if [ ! -d "$ubus_pkg_dir" ]; then
+        echo "错误：ubus 包目录不存在: $ubus_pkg_dir" >&2
+        return 1
+    fi
+
+    mkdir -p "$ubus_pkg_dir/patches"
+
+    if [ -f "$BASE_PATH/patches/$patch_file" ]; then
+        install -Dm644 "$BASE_PATH/patches/$patch_file" "$ubus_pkg_dir/patches/$patch_file"
+        echo "已安装 ubus CMakeLists 补丁: $patch_file"
+    else
+        echo "错误：补丁文件不存在: $BASE_PATH/patches/$patch_file" >&2
+        return 1
+    fi
+
+    if [ ! -f "$ubus_pkg_dir/patches/$patch_file" ]; then
+        echo "错误：补丁安装失败: $ubus_pkg_dir/patches/$patch_file" >&2
+        return 1
+    fi
+
+    # FORTIFY_SOURCE: fix for GCC 14 strict check - disable format-nonliteral error globally
+    # This is needed because macro expansion in fortify/stdio.h still triggers the error
+    if [ -f "$BUILD_DIR/include/fortify/stdio.h" ]; then
+        # Comment out the line that adds -Werror=format-nonliteral
+        sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/stdio.h" 2>/dev/null || true
+        sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/stdio.h" 2>/dev/null || true
+    fi
+
+    # Fix all other fortify headers just in case
+    for header in stdio.h stdarg.h string.h; do
+        if [ -f "$BUILD_DIR/include/fortify/$header" ]; then
+            sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/$header" 2>/dev/null || true
+        fi
+    done
+
+    echo "GCC 14 format-nonliteral error修复完成"
 }
