@@ -670,9 +670,11 @@ install_libubox_cmake_patch() {
     local libubox_pkg_dir="$BUILD_DIR/package/libs/libubox"
     local patch_file="999-libubox-demote-format-nonliteral.patch"
 
+    # Upstream immortalwrt has already fixed this in CMakeLists.txt
+    # Only apply patch if it exists for backward compatibility
     if [ ! -d "$libubox_pkg_dir" ]; then
-        echo "错误：libubox 包目录不存在: $libubox_pkg_dir" >&2
-        return 1
+        echo "警告：libubox 包目录不存在: $libubox_pkg_dir，跳过补丁" >&2
+        return 0
     fi
 
     mkdir -p "$libubox_pkg_dir/patches"
@@ -681,13 +683,13 @@ install_libubox_cmake_patch() {
         install -Dm644 "$BASE_PATH/patches/$patch_file" "$libubox_pkg_dir/patches/$patch_file"
         echo "已安装 libubox CMakeLists 补丁: $patch_file"
     else
-        echo "错误：补丁文件不存在: $BASE_PATH/patches/$patch_file" >&2
-        return 1
+        echo "提示：补丁文件不存在 $BASE_PATH/patches/$patch_file，跳过 - 上游已修复"
+        return 0
     fi
 
     if [ ! -f "$libubox_pkg_dir/patches/$patch_file" ]; then
-        echo "错误：补丁安装失败: $libubox_pkg_dir/patches/$patch_file" >&2
-        return 1
+        echo "警告：补丁安装失败: $libubox_pkg_dir/patches/$patch_file" >&2
+        return 0
     fi
 }
 
@@ -695,9 +697,11 @@ install_ubus_cmake_patch() {
     local ubus_pkg_dir="$BUILD_DIR/package/system/ubus"
     local patch_file="999-ubus-demote-format-nonliteral.patch"
 
+    # Upstream immortalwrt has already fixed this in CMakeLists.txt
+    # Only apply patch if it exists for backward compatibility
     if [ ! -d "$ubus_pkg_dir" ]; then
-        echo "错误：ubus 包目录不存在: $ubus_pkg_dir" >&2
-        return 1
+        echo "警告：ubus 包目录不存在: $ubus_pkg_dir，跳过补丁" >&2
+        return 0
     fi
 
     mkdir -p "$ubus_pkg_dir/patches"
@@ -706,13 +710,13 @@ install_ubus_cmake_patch() {
         install -Dm644 "$BASE_PATH/patches/$patch_file" "$ubus_pkg_dir/patches/$patch_file"
         echo "已安装 ubus CMakeLists 补丁: $patch_file"
     else
-        echo "错误：补丁文件不存在: $BASE_PATH/patches/$patch_file" >&2
-        return 1
+        echo "提示：补丁文件不存在 $BASE_PATH/patches/$patch_file，跳过 - 上游已修复"
+        return 0
     fi
 
     if [ ! -f "$ubus_pkg_dir/patches/$patch_file" ]; then
-        echo "错误：补丁安装失败: $ubus_pkg_dir/patches/$patch_file" >&2
-        return 1
+        echo "警告：补丁安装失败: $ubus_pkg_dir/patches/$patch_file" >&2
+        return 0
     fi
 }
 
@@ -737,32 +741,9 @@ fix_gcc14_fortify() {
 
 fix_ubus_gcc14() {
     # Fix GCC 14 compile error: format not a string literal
-    # Install patches for both libubox and ubus
-    install_libubox_cmake_patch
-
-    local ubus_pkg_dir="$BUILD_DIR/package/system/ubus"
-    local patch_file="999-ubus-demote-format-nonliteral.patch"
-
-    if [ ! -d "$ubus_pkg_dir" ]; then
-        echo "错误：ubus 包目录不存在: $ubus_pkg_dir" >&2
-        return 1
-    fi
-
-    mkdir -p "$ubus_pkg_dir/patches"
-
-    if [ -f "$BASE_PATH/patches/$patch_file" ]; then
-        install -Dm644 "$BASE_PATH/patches/$patch_file" "$ubus_pkg_dir/patches/$patch_file"
-        echo "已安装 ubus CMakeLists 补丁: $patch_file"
-    else
-        echo "错误：补丁文件不存在: $BASE_PATH/patches/$patch_file" >&2
-        return 1
-    fi
-
-    if [ ! -f "$ubus_pkg_dir/patches/$patch_file" ]; then
-        echo "错误：补丁安装失败: $ubus_pkg_dir/patches/$patch_file" >&2
-        return 1
-    fi
-
+    # Upstream immortalwrt has already fixed this in CMakeLists.txt for libubox/ubus
+    # Only need to fix fortify headers where macro expansion still triggers the error
+    
     # FORTIFY_SOURCE: fix for GCC 14 strict check - disable format-nonliteral error globally
     # This is needed because macro expansion in fortify/stdio.h still triggers the error
     if [ -f "$BUILD_DIR/include/fortify/stdio.h" ]; then
