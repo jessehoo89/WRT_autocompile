@@ -697,8 +697,8 @@ install_ubus_cmake_patch() {
     local ubus_pkg_dir="$BUILD_DIR/package/system/ubus"
     local patch_file="999-ubus-demote-format-nonliteral.patch"
 
-    # Upstream immortalwrt has already fixed this in CMakeLists.txt
-    # Only apply patch if it exists for backward compatibility
+    # Note: Unlike libubox, upstream has NOT fixed ubus yet
+    # We need to apply this patch ourselves for GCC 14 compatibility
     if [ ! -d "$ubus_pkg_dir" ]; then
         echo "警告：ubus 包目录不存在: $ubus_pkg_dir，跳过补丁" >&2
         return 0
@@ -710,7 +710,7 @@ install_ubus_cmake_patch() {
         install -Dm644 "$BASE_PATH/patches/$patch_file" "$ubus_pkg_dir/patches/$patch_file"
         echo "已安装 ubus CMakeLists 补丁: $patch_file"
     else
-        echo "提示：补丁文件不存在 $BASE_PATH/patches/$patch_file，跳过 - 上游已修复"
+        echo "警告：补丁文件不存在 $BASE_PATH/patches/$patch_file，跳过" >&2
         return 0
     fi
 
