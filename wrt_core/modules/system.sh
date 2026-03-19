@@ -736,6 +736,20 @@ fix_gcc14_fortify() {
         fi
     done
 
+    # Also fix toolchain fortify headers (this is the key fix for ubus compilation)
+    # The error comes from staging_dir/toolchain-aarch64_cortex-a53_gcc-14.3.0_musl/include/fortify/stdio.h
+    if [ -d "$BUILD_DIR/staging_dir" ]; then
+        for toolchain_dir in "$BUILD_DIR/staging_dir"/toolchain-*; do
+            if [ -d "$toolchain_dir/include/fortify" ]; then
+                for header in stdio.h stdarg.h string.h; do
+                    if [ -f "$toolchain_dir/include/fortify/$header" ]; then
+                        sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$toolchain_dir/include/fortify/$header" 2>/dev/null || true
+                    fi
+                done
+            fi
+        done
+    fi
+
     echo "GCC 14 format-nonliteral error修复完成"
 }
 
@@ -758,6 +772,19 @@ fix_ubus_gcc14() {
             sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$BUILD_DIR/include/fortify/$header" 2>/dev/null || true
         fi
     done
+
+    # Also fix toolchain fortify headers
+    if [ -d "$BUILD_DIR/staging_dir" ]; then
+        for toolchain_dir in "$BUILD_DIR/staging_dir"/toolchain-*; do
+            if [ -d "$toolchain_dir/include/fortify" ]; then
+                for header in stdio.h stdarg.h string.h; do
+                    if [ -f "$toolchain_dir/include/fortify/$header" ]; then
+                        sed -i 's/_FORTIFY_GCC_WARN_FORMAT_NONLITERAL//g' "$toolchain_dir/include/fortify/$header" 2>/dev/null || true
+                    fi
+                done
+            fi
+        done
+    fi
 
     echo "GCC 14 format-nonliteral error修复完成"
 }
