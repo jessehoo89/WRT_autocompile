@@ -695,27 +695,25 @@ install_libubox_cmake_patch() {
 
 install_ubus_cmake_patch() {
     local ubus_pkg_dir="$BUILD_DIR/package/system/ubus"
-    local patch_file="999-ubus-demote-format-nonliteral.patch"
+    local makefile="$ubus_pkg_dir/Makefile"
 
-    # Note: Unlike libubox, upstream has NOT fixed ubus yet
-    # We need to apply this patch ourselves for GCC 14 compatibility
+    # Fix GCC 14 format-nonliteral error by adding -Wno-error to CMAKE_OPTIONS
+    # This is more reliable than using patches that may not match the actual source
     if [ ! -d "$ubus_pkg_dir" ]; then
-        echo "警告：ubus 包目录不存在: $ubus_pkg_dir，跳过补丁" >&2
+        echo "警告：ubus 包目录不存在: $ubus_pkg_dir，跳过" >&2
         return 0
     fi
 
-    mkdir -p "$ubus_pkg_dir/patches"
-
-    if [ -f "$BASE_PATH/patches/$patch_file" ]; then
-        install -Dm644 "$BASE_PATH/patches/$patch_file" "$ubus_pkg_dir/patches/$patch_file"
-        echo "已安装 ubus CMakeLists 补丁: $patch_file"
+    if [ -f "$makefile" ]; then
+        # Add -Wno-error=format-nonliteral to TARGET_CFLAGS if not already present
+        if ! grep -q "Wno-error=format-nonliteral" "$makefile"; then
+            sed -i 's/TARGET_CFLAGS += /TARGET_CFLAGS += -Wno-error=format-nonliteral /g' "$makefile"
+            echo "已修复 ubus GCC 14 format-nonliteral 错误"
+        else
+            echo "ubus GCC 14 修复已存在，跳过"
+        fi
     else
-        echo "警告：补丁文件不存在 $BASE_PATH/patches/$patch_file，跳过" >&2
-        return 0
-    fi
-
-    if [ ! -f "$ubus_pkg_dir/patches/$patch_file" ]; then
-        echo "警告：补丁安装失败: $ubus_pkg_dir/patches/$patch_file" >&2
+        echo "警告：ubus Makefile 不存在: $makefile，跳过" >&2
         return 0
     fi
 }
