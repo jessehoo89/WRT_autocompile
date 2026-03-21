@@ -1,5 +1,7 @@
 name: Release WRT
+
 run-name: Release - ${{ inputs.model }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -14,6 +16,8 @@ on:
           - gemtek_w1701k_immwrt
           - jdcloud_ax6000_immwrt
           - jdcloud_ipq60xx_immwrt
+          - jdcloud_ipq60xx_immwrt_kmod
+          - jdcloud_ipq60xx_libwrt
           - link_nn6000v2_immwrt
           - linksys_mx4x00_immwrt
           - n1_immwrt
@@ -22,11 +26,15 @@ on:
           - redmi_ax6_immwrt
           - redmi_ax6_libwrt
           - redmi_ax6000_immwrt21
-          - zn_m2_immwrt
           - x64_immwrt
+          - zn_m2_immwrt
+          - zn_m2_immwrt_nowifi_kmod
+          - zn_m2_libwrt
           - zte_e8820s_lede_nowifi
+
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
   build:
     strategy:
@@ -36,28 +44,28 @@ jobs:
     steps:
       - name: Free disk space
         uses: sbwml/actions@free-disk
+
       - name: Build System Setup
         run: |
-          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-          sudo -E apt -yqq install dos2unix
-          sudo -E apt -yqq install libfuse-dev
-          sudo -E apt -yqq autoremove --purge
-          sudo -E apt -yqq autoclean
-          sudo -E apt -yqq clean
-          sudo -E systemctl daemon-reload
+          sudo timedatectl set-timezone "Asia/Shanghai"
+          sudo apt-get update -y
+          sudo apt-get install -yqq aria2 dos2unix uuid-dev libncurses5-dev libz-dev libssl-dev zlib1g-dev gawk git curl sed tar cpio
+
       - name: Checkout
-        uses: actions/checkout@v6.0.2
-      - name: Set Build Date and Timezone
+        uses: actions/checkout@v4
+
+      - name: Initialization Environment
         run: |
-          sudo -E timedatectl set-timezone "Asia/Shanghai"
           export BUILD_DATE=$(TZ=UTC-8 date +"%y.%m.%d_%H.%M.%S")
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
-          export BUILD_SRC=$(awk -F"=" '/REPO_URL/ {print $NF}' "./wrt_core/compilecfg/${{ inputs.model }}.ini")
-          echo "BUILD_SRC=$BUILD_SRC" >> $GITHUB_ENV
+          export BUILD_DIR=action_build
+          echo "BUILD_DIR=$BUILD_DIR" >> $GITHUB_ENV
+
       - name: Pre Clone
         run: ./wrt_core/pre_clone_action.sh ${{ inputs.model }}
+
       - name: Cache Dependencies
-        uses: actions/cache@v5.0.2
+        uses: actions/cache@v4
         with:
           path: |
             ./action_build/.ccache
@@ -65,6 +73,7 @@ jobs:
           key: ${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}-${{ env.BUILD_DATE }}
           restore-keys: |
             ${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}-
+
       - name: Refresh the cache
         run: |
           if [ -d "./action_build/staging_dir" ]; then
@@ -72,22 +81,59 @@ jobs:
                 find "$dir" -type f -exec touch {} +
             done
           fi
-      - name: Build Firmware
-        run: ./build.sh ${{ inputs.model }}
-      - name: Get Kernel Verion
+
+      - name: Make update.sh executable
+        run: chmod +x update.sh
+
+      - name: Update Source
+        run: ./update.sh ${{ inputs.model }}
+
+      - name: Get Repo Info
         run: |
-          # 获取内核版本
-          echo "KVER=$(grep -oP "^kernel.*" ./firmware/*.manifest | grep -oP "[4-6]\.[0-9]{1,3}\.[0-9]{1,3}")" >> $GITHUB_ENV
+          export REPO_URL=$(awk -F"=" '/REPO_URL/ {print $NF}' "./wrt_core/compilecfg/${{ inputs.model }}.ini")
+          echo "REPO_URL=$REPO_URL" >> $GITHUB_ENV
+          export REPO_BRANCH=$(awk -F"=" '/REPO_BRANCH/ {print $NF}' "./wrt_core/compilecfg/${{ inputs.model }}.ini")
+          echo "REPO_BRANCH=$REPO_BRANCH" >> $GITHUB_ENV
+
+      - name: Config Build
+        run: |
+          mkdir -p ./firmware
+          \cp -f wrt_core/deconfig/${{ inputs.model }}.config action_build/.config
+
+      - name: Prebuild
+        run: |
+          cd action_build
+          make defconfig
+          cd ..
+
+      - name: Build Firmware
+        run: |
+          cd action_build
+          make -j$(nproc) IGNORE_ERRORS=1 V=s
+          cd ..
+
+      - name: Copy Firmware
+        run: |
+          if [ -d "./action_build/bin/targets" ]; then
+            mkdir -p ./firmware
+            find ./action_build/bin/targets -name "*.squashfs*" -o -name "*.ext4*" -o -name "*-sysupgrade.tar*" | while read -r f; do
+              cp -v "$f" ./firmware/
+            done
+          fi
+
+      - name: Get Kernel Version
+        run: |
+          echo "KVER=$(find ./action_build/dl -maxdepth 1 -name "linux-[4-6]\.*" | sort -r | head -n 1 | grep -oE "[4-6]\.[0-9]{1,3}\.[0-9]{1,3}")" >> $GITHUB_ENV
+
       - name: Delete Old Cache
         run: |
-          # 获取缓存列表并删除
-          gh cache list --key ${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}- --json key --jq '.[] | .key' | while read -r key; do
+          gh cache list --key "${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}-" --json key --jq '.[] | .key' | while read -r key; do
             gh cache delete "$key"
           done
-          # 输出缓存状态
           echo "========cache status========"
           echo "ccache: $(du -sh ./action_build/.ccache | cut -f 1)"
           echo "staging: $(du -sh ./action_build/staging_dir | cut -f 1)"
+
       - name: Machine Information
         run: |
           echo "=============================================="
@@ -95,27 +141,22 @@ jobs:
           echo "=============================================="
           df -h
           echo "=============================================="
-      - name: Package OpenWrt Firmware
-        if: ${{ inputs.model == 'n1_immwrt' }}
-        uses: unifreq/openwrt_packit@master
-        env:
-          OPENWRT_ARMVIRT: firmware/*.tar.gz
-          PACKAGE_SOC: s905d
-          KERNEL_VERSION_NAME: 6.6.y
-          WHOAMI: ZqinKing
+
       - name: Prepare Release Body
         run: |
           echo "云编译发布" > release_body.txt
-          echo "源码：${{ env.BUILD_SRC }}" >> release_body.txt
+          echo "源码：${{ env.REPO_URL }}" >> release_body.txt
+          echo "Branch: ${{ env.REPO_BRANCH }}" >> release_body.txt
           echo "Kernel: ${{ env.KVER }}" >> release_body.txt
           echo "WIFI密码: 12345678" >> release_body.txt
           echo "LAN地址: 192.168.1.1" >> release_body.txt
           echo "插件：" >> release_body.txt
-          echo "$(grep -oP "luci-app(-[a-zA-Z0-9]{1,}){1,}" ./firmware/*.manifest | awk -F":" '{print $NF}')"  >> release_body.txt
+          echo "$(grep -oP "luci-app(-[a-zA-Z0-9]{1,}){1,}" ./firmware/*.manifest | awk -F":" '{print $NF}')" >> release_body.txt
+
       - name: Release Firmware
-        uses: softprops/action-gh-release@v2.5.0
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.BUILD_DATE }}_${{ inputs.model }}
-          files: |
-            ${{ inputs.model == 'n1_immwrt' && env.PACKAGED_OUTPUTPATH || './firmware' }}/*.*
+          name: ${{ env.BUILD_DATE }}_${{ inputs.model }}
+          tag_name: ${{ inputs.model }}
+          files: ./firmware/*.*
           body_path: ./release_body.txt
