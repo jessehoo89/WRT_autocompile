@@ -49,9 +49,6 @@ main() {
     update_golang
     change_dnsmasq2full
     fix_mk_def_depends
-    install_libubox_cmake_patch
-    install_ubus_cmake_patch
-    fix_gcc14_fortify
     update_default_lan_addr
     remove_something_nss_kmod
     update_affinity_script
