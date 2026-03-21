@@ -82,11 +82,11 @@ jobs:
             done
           fi
 
-      - name: Make update.sh executable
-        run: chmod +x update.sh
+      - name: Make wrt_core/update.sh executable
+        run: chmod +x wrt_core/update.sh
 
       - name: Update Source
-        run: ./update.sh ${{ inputs.model }}
+        run: ./wrt_core/update.sh ${{ inputs.model }}
 
       - name: Get Repo Info
         run: |
