@@ -49,7 +49,7 @@ remove_uhttpd_dependency() {
 
 apply_config() {
     \cp -f "$CONFIG_FILE" "$BASE_PATH/../$BUILD_DIR/.config"
-    
+
     if grep -qE "(ipq60xx|ipq807x)" "$BASE_PATH/../$BUILD_DIR/.config" &&
         ! grep -q "CONFIG_GIT_MIRROR" "$BASE_PATH/../$BUILD_DIR/.config"; then
         cat "$BASE_PATH/deconfig/nss.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
@@ -73,7 +73,7 @@ if [[ -d action_build ]]; then
     BUILD_DIR="action_build"
 fi
 
-"$BASE_PATH/wrt_core/update.sh" "$REPO_URL" "$REPO_BRANCH" "$BUILD_DIR" "$COMMIT_HASH"
+"$BASE_PATH/update.sh" "$REPO_URL" "$REPO_BRANCH" "$BUILD_DIR" "$COMMIT_HASH"
 
 apply_config
 remove_uhttpd_dependency
@@ -114,6 +114,6 @@ fi
 # 复制 kmod 压缩包到 firmware 目录，便于发布
 find "$BASE_PATH/$BUILD_DIR/bin/targets/qualcommax/ipq60xx" -name "kmod-repo-*.tar.gz" -exec cp {} "$FIRMWARE_DIR/" \;
 
-if [[ -d $BASE_PATH/action_build ]]; then
+if [[ -d action_build ]]; then
     make clean
 fi

@@ -12,12 +12,8 @@ jobs:
       matrix:
         # 定义需要定时编译的设备列表（按需增减）
         device:
-          - model: jdcloud_ipq60xx_immwrt
-          - model: zn_m2_immwrt
           - model: jdcloud_ipq60xx_immwrt_kmod
           - model: zn_m2_immwrt_nowifi_kmod
-          - model: jdcloud_ipq60xx_libwrt
-          - model: zn_m2_libwrt
           # 添加更多设备配置...
 
     steps:
