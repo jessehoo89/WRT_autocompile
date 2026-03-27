@@ -107,10 +107,15 @@ find "$TARGET_DIR" -type f \( -name "*.bin" -o -name "*.manifest" -o -name "*efi
 \rm -f "$BASE_PATH/../firmware/Packages.manifest" 2>/dev/null
 
 # 提取并打包 kmod 软件源
+echo ">>> Checking for extract_kmod_repo.sh at $BASE_PATH/extract_kmod_repo.sh"
 if [ -f "$BASE_PATH/extract_kmod_repo.sh" ]; then
-  chmod +x "$BASE_PATH/extract_kmod_repo.sh"
-  "$BASE_PATH/extract_kmod_repo.sh" "$BASE_PATH/../$BUILD_DIR"
+    echo ">>> Script found, executing..."
+    chmod +x "$BASE_PATH/extract_kmod_repo.sh"
+    "$BASE_PATH/extract_kmod_repo.sh" "$BASE_PATH/../$BUILD_DIR"
+else
+    echo ">>> Script NOT found, skipping kmod packaging"
 fi
+
 # 复制 kmod 压缩包到 firmware 目录，便于发布
 find "$BASE_PATH/../$BUILD_DIR/bin/targets/qualcommax/ipq60xx" -name "kmod-repo-*.tar.gz" -exec cp {} "$FIRMWARE_DIR/" \;
 
