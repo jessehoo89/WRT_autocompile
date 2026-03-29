@@ -38,9 +38,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Free disk space
-        uses: sbwml/actions@free-disk
-
       - name: Build System Setup
         run: |
           sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
@@ -81,6 +78,33 @@ jobs:
             done
           fi
 
+      - name: Machine Information (Pre-build)
+        run: |
+          echo "=============== Pre-build Snapshot ==============="
+          echo "Time: $(date '+%F %T %Z')"
+          echo "Runner: ${RUNNER_NAME} (${RUNNER_OS}/${RUNNER_ARCH})"
+          echo "Kernel: $(uname -r)"
+          echo "Uptime: $(uptime -p)"
+          echo "=================================================="
+          echo "[CPU]"
+          lscpu | grep -E "Model name|Architecture|CPU\\(s\\)|Thread\\(s\\) per core|Core\\(s\\) per socket|CPU max MHz"
+          echo "=================================================="
+          echo "[Memory]"
+          free -h
+          echo "=================================================="
+          echo "[Disk]"
+          df -hT
+          echo "--------------------------------------------------"
+          df -hi
+          echo "=================================================="
+          echo "[Workspace]"
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          du -sh "${GITHUB_WORKSPACE}" 2>/dev/null || true
+          du -sh ./action_build/.ccache 2>/dev/null || true
+          du -sh ./action_build/staging_dir 2>/dev/null || true
+          du -sh ./firmware 2>/dev/null || true
+          echo "=================================================="
+
       - name: Build Firmware
         run: ./build.sh ${{ inputs.model }}
 
@@ -95,13 +119,31 @@ jobs:
           echo "ccache: $(du -sh ./action_build/.ccache | cut -f 1)"
           echo "staging: $(du -sh ./action_build/staging_dir | cut -f 1)"
 
-      - name: Machine Information
+      - name: Machine Information (Post-build)
         run: |
-          echo "=============================================="
-          lscpu | grep -E "name|Core|Thread"
-          echo "=============================================="
-          df -h
-          echo "=============================================="
+          echo "=============== Post-build Snapshot ==============="
+          echo "Time: $(date '+%F %T %Z')"
+          echo "Runner: ${RUNNER_NAME} (${RUNNER_OS}/${RUNNER_ARCH})"
+          echo "Kernel: $(uname -r)"
+          echo "Uptime: $(uptime -p)"
+          echo "===================================================="
+          echo "[CPU]"
+          lscpu | grep -E "Model name|Architecture|CPU\\(s\\)|Thread\\(s\\) per core|Core\\(s\\) per socket|CPU max MHz"
+          echo "===================================================="
+          echo "[Memory]"
+          free -h
+          echo "===================================================="
+          echo "[Disk]"
+          df -hT
+          echo "----------------------------------------------------"
+          df -hi
+          echo "===================================================="
+          echo "[Build Outputs]"
+          du -sh ./action_build/.ccache 2>/dev/null || true
+          du -sh ./action_build/staging_dir 2>/dev/null || true
+          du -sh ./firmware 2>/dev/null || true
+          echo "Firmware file count: $(ls -1 ./firmware 2>/dev/null | wc -l)"
+          echo "===================================================="
 
       - name: Upload Firmware
         uses: actions/upload-artifact@v6
