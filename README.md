@@ -140,7 +140,7 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 2.  将「appfilter」当前状态**从已禁用更改为已启用**
 3.  完成配置后，点击**启动**按钮激活服务
 
-## 7. kmod包编译
+## 8. kmod包编译
 
 以下项目在固件编译过程中将同时编译所有kmod，生成索引和密钥并打包
 
