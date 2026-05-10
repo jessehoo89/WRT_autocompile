@@ -12,16 +12,11 @@ remove_unwanted_packages() {
         "mosdns" "adguardhome" "ddns-go" "naiveproxy" "shadowsocks-rust"
         "sing-box" "v2ray-core" "v2ray-geodata" "v2ray-plugin" "tuic-client"
         "chinadns-ng" "ipt2socks" "tcping" "trojan-plus" "simple-obfs" "shadowsocksr-libev"
-        "dae" "daed" "mihomo" "geoview" "tailscale" "open-app-filter" "msd_lite"
+        "dae" "daed" "mihomo" "geoview" "open-app-filter" "msd_lite"
     )
     local packages_utils=(
         "cups"
     )
-    local small8_packages=(
-        "ppp" "firewall" "dae" "daed" "daed-next" "libnftnl" "nftables" "dnsmasq" "luci-app-alist"
-        "alist" "opkg" "smartdns" "luci-app-smartdns" "easytier"
-    )
-
     for pkg in "${luci_packages[@]}"; do
         if [[ -d ./feeds/luci/applications/$pkg ]]; then
             \rm -rf ./feeds/luci/applications/$pkg
@@ -43,12 +38,6 @@ remove_unwanted_packages() {
         fi
     done
 
-    for pkg in "${small8_packages[@]}"; do
-        if [[ -d ./feeds/small8/$pkg ]]; then
-            \rm -rf ./feeds/small8/$pkg
-        fi
-    done
-
     if [[ -d ./package/istore ]]; then
         \rm -rf ./package/istore
     fi
@@ -56,6 +45,22 @@ remove_unwanted_packages() {
     if [ -d "$BUILD_DIR/target/linux/qualcommax/base-files/etc/uci-defaults" ]; then
         find "$BUILD_DIR/target/linux/qualcommax/base-files/etc/uci-defaults/" -type f -name "99*.sh" -exec rm -f {} +
     fi
+}
+
+get_custom_feed_name() {
+    printf '%s\n' "custom_feed"
+}
+
+get_custom_feed_source_dir() {
+    printf '%s\n' "$BUILD_DIR/$(get_custom_feed_name)"
+}
+
+get_custom_feed_worktree_dir() {
+    printf '%s\n' "$BUILD_DIR/feeds/$(get_custom_feed_name)"
+}
+
+get_custom_feed_package_dir() {
+    printf '%s\n' "$BUILD_DIR/package/feeds/$(get_custom_feed_name)"
 }
 
 update_golang() {
@@ -69,35 +74,187 @@ update_golang() {
     fi
 }
 
-install_small8() {
-    ./scripts/feeds install -p small8 -f xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
+sync_sparse_packages_to_feed_dir() {
+    local repo_url="$1"
+    local repo_branch="$2"
+    local target_dir="$3"
+    local repo_label="$4"
+    shift 4
+
+    local packages=("$@")
+    local tmp_dir
+    local missing_packages=()
+    local clone_args=(clone --depth 1 --filter=blob:none --sparse)
+    local pkg
+
+    tmp_dir=$(mktemp -d)
+
+    if [ -n "$repo_branch" ]; then
+        clone_args+=(-b "$repo_branch")
+    fi
+
+    clone_args+=("$repo_url" "$tmp_dir")
+
+    echo "正在从 $repo_label 稀疏同步指定目录..."
+    if ! git "${clone_args[@]}"; then
+        echo "错误：从 $repo_url 拉取仓库骨架失败" >&2
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    if ! git -C "$tmp_dir" sparse-checkout set "${packages[@]}"; then
+        echo "错误：配置 $repo_label 稀疏检出目录失败" >&2
+        rm -rf "$tmp_dir"
+        return 1
+    fi
+
+    for pkg in "${packages[@]}"; do
+        if [ -d "$tmp_dir/$pkg" ]; then
+            rm -rf "$target_dir/$pkg"
+            mv "$tmp_dir/$pkg" "$target_dir/"
+        else
+            missing_packages+=("$pkg")
+        fi
+    done
+
+    rm -rf "$tmp_dir"
+
+    if [ ${#missing_packages[@]} -ne 0 ]; then
+        printf '错误：%s 仓库缺少以下必要目录：\n' "$repo_label" >&2
+        printf '  - %s\n' "${missing_packages[@]}" >&2
+        return 1
+    fi
+}
+
+register_local_feed_source() {
+    local custom_feed_dir="$1"
+    local feeds_path="$2"
+    local feed_name
+    feed_name=$(get_custom_feed_name)
+
+    sed -i "/[[:space:]]$feed_name[[:space:]]/d" "$feeds_path"
+    [ -z "$(tail -c 1 "$feeds_path")" ] || echo "" >>"$feeds_path"
+    echo "src-link $feed_name $custom_feed_dir" >>"$feeds_path"
+    echo "已将 $feed_name 作为本地源 (src-link) 添加到 $feeds_path"
+}
+
+install_custom_feed() {
+    local feeds_path
+    local fullconenat_nft_dir="$BUILD_DIR/package/network/utils/fullconenat-nft"
+    local fullconenat_dir="$BUILD_DIR/package/network/utils/fullconenat"
+    local custom_feed_dir
+    local custom_feed_worktree_dir
+    local custom_feed_name
+
+    local base_custom_feed_packages=(
+        xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
         naiveproxy shadowsocks-rust sing-box v2ray-core v2ray-geodata geoview v2ray-plugin \
         tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
-        v2dat mosdns luci-app-mosdns adguardhome luci-app-adguardhome ddns-go \
+        v2dat adguardhome luci-app-adguardhome ddns-go \
         luci-app-ddns-go taskd luci-lib-xterm luci-lib-taskd luci-app-store quickstart \
         luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest netdata luci-app-netdata \
         lucky luci-app-lucky luci-app-openclash luci-app-homeproxy luci-app-amlogic \
-        tailscale luci-app-tailscale oaf open-app-filter luci-app-oaf easytier luci-app-easytier \
+        oaf open-app-filter luci-app-oaf easytier luci-app-easytier \
         msd_lite luci-app-msd_lite cups luci-app-cupsd
-}
+    )
+    local required_feed_dirs=(
+        cups tcping v2ray-geodata luci-lib-taskd luci-app-openclash
+        luci-app-quickstart luci-app-store luci-app-homeproxy luci-app-mosdns
+        luci-app-passwall nikki luci-app-nikki
+        open-app-filter luci-app-oaf lucky luci-app-lucky luci-app-easytier
+    )
+    local custom_feed_sources=()
+    local missing_feed_dirs=()
+    local source_entry
+    local repo_label
+    local repo_url
+    local repo_branch
+    local repo_packages
+    local repo_package_array=()
 
-install_passwall() {
-    echo "正在从官方仓库安装 luci-app-passwall..."
-    ./scripts/feeds install -p passwall -f luci-app-passwall
-}
-
-install_nikki() {
-    echo "正在从官方仓库安装 nikki..."
-    ./scripts/feeds install -p nikki -f nikki luci-app-nikki
-}
-
-install_fullconenat() {
-    if [ ! -d $BUILD_DIR/package/network/utils/fullconenat-nft ]; then
-        ./scripts/feeds install -p small8 -f fullconenat-nft
+    if [ ! -d "$fullconenat_nft_dir" ]; then
+        base_custom_feed_packages+=(fullconenat-nft)
     fi
-    if [ ! -d $BUILD_DIR/package/network/utils/fullconenat ]; then
-        ./scripts/feeds install -p small8 -f fullconenat
+    if [ ! -d "$fullconenat_dir" ]; then
+        base_custom_feed_packages+=(fullconenat)
     fi
+
+    custom_feed_sources=(
+        "kenzok8/small-package|https://github.com/kenzok8/small-package.git||${base_custom_feed_packages[*]}"
+        "sbwml/luci-app-mosdns|https://github.com/sbwml/luci-app-mosdns.git|v5|mosdns luci-app-mosdns"
+        "Openwrt-Passwall/openwrt-passwall|https://github.com/Openwrt-Passwall/openwrt-passwall.git|main|luci-app-passwall"
+        "nikkinikki-org/OpenWrt-nikki|https://github.com/nikkinikki-org/OpenWrt-nikki.git|main|nikki luci-app-nikki"
+    )
+
+    feeds_path=$(get_feeds_path)
+    custom_feed_name=$(get_custom_feed_name)
+    custom_feed_dir=$(get_custom_feed_source_dir)
+    custom_feed_worktree_dir=$(get_custom_feed_worktree_dir)
+
+    if [ -d "$custom_feed_dir" ]; then
+        echo "清理旧的自定义 feed 目录..."
+        rm -rf "$custom_feed_dir"
+    fi
+    mkdir -p "$custom_feed_dir"
+
+    for source_entry in "${custom_feed_sources[@]}"; do
+        IFS='|' read -r repo_label repo_url repo_branch repo_packages <<< "$source_entry"
+        read -r -a repo_package_array <<< "$repo_packages"
+
+        if ! sync_sparse_packages_to_feed_dir "$repo_url" "$repo_branch" "$custom_feed_dir" "$repo_label" "${repo_package_array[@]}"; then
+            rm -rf "$custom_feed_dir"
+            return 1
+        fi
+    done
+
+    register_local_feed_source "$custom_feed_dir" "$feeds_path"
+
+    echo "正在更新 $custom_feed_name 本地 feed 索引..."
+    ./scripts/feeds update "$custom_feed_name"
+
+    collect_missing_directories "$custom_feed_worktree_dir" required_feed_dirs missing_feed_dirs
+
+    if [ ${#missing_feed_dirs[@]} -ne 0 ]; then
+        printf '错误：%s 本地 feed 未生成以下仓库依赖路径：\n' "$custom_feed_name" >&2
+        printf '  - %s\n' "${missing_feed_dirs[@]}" >&2
+        return 1
+    fi
+
+    echo "$custom_feed_name 指定包处理完成并已成功加载到 feeds 体系中！"
+}
+
+verify_custom_feed_installed_paths() {
+    local custom_feed_name
+    local custom_feed_package_dir
+    local required_package_dirs=(
+        luci-app-adguardhome luci-app-mosdns v2ray-geodata luci-app-easytier
+        luci-app-passwall nikki luci-app-nikki
+    )
+    local missing_package_dirs=()
+
+    custom_feed_name=$(get_custom_feed_name)
+    custom_feed_package_dir=$(get_custom_feed_package_dir)
+
+    collect_missing_directories "$custom_feed_package_dir" required_package_dirs missing_package_dirs
+
+    if [ ${#missing_package_dirs[@]} -ne 0 ]; then
+        printf '错误：%s 安装后缺少以下仓库依赖路径：\n' "$custom_feed_name" >&2
+        printf '  - %s\n' "${missing_package_dirs[@]}" >&2
+        return 1
+    fi
+}
+
+collect_missing_directories() {
+    local base_dir="$1"
+    local -n required_dirs_ref="$2"
+    local -n missing_dirs_ref="$3"
+    local dir_name
+
+    for dir_name in "${required_dirs_ref[@]}"; do
+        if [ ! -d "$base_dir/$dir_name" ]; then
+            missing_dirs_ref+=("${base_dir#$BUILD_DIR/}/$dir_name")
+        fi
+    done
 }
 
 check_default_settings() {
@@ -145,7 +302,7 @@ add_ax6600_led() {
 
 update_homeproxy() {
     local repo_url="https://github.com/immortalwrt/homeproxy.git"
-    local target_dir="$BUILD_DIR/feeds/small8/luci-app-homeproxy"
+    local target_dir="$(get_custom_feed_worktree_dir)/luci-app-homeproxy"
 
     if [ -d "$target_dir" ]; then
         echo "正在更新 homeproxy..."
@@ -169,7 +326,7 @@ add_timecontrol() {
 }
 
 update_adguardhome() {
-    local adguardhome_dir="$BUILD_DIR/package/feeds/small8/luci-app-adguardhome"
+    local adguardhome_dir="$(get_custom_feed_package_dir)/luci-app-adguardhome"
     local repo_url="https://github.com/ZqinKing/luci-app-adguardhome.git"
 
     echo "正在更新 luci-app-adguardhome..."
@@ -183,9 +340,9 @@ update_adguardhome() {
 
 update_lucky() {
     local lucky_repo_url="https://github.com/gdy666/luci-app-lucky.git"
-    local target_small8_dir="$BUILD_DIR/feeds/small8"
-    local lucky_dir="$target_small8_dir/lucky"
-    local luci_app_lucky_dir="$target_small8_dir/luci-app-lucky"
+    local target_custom_feed_dir="$(get_custom_feed_worktree_dir)"
+    local lucky_dir="$target_custom_feed_dir/lucky"
+    local luci_app_lucky_dir="$target_custom_feed_dir/luci-app-lucky"
 
     if [ ! -d "$lucky_dir" ] || [ ! -d "$luci_app_lucky_dir" ]; then
         echo "Warning: $lucky_dir 或 $luci_app_lucky_dir 不存在，跳过 lucky 源代码更新。" >&2
@@ -219,7 +376,7 @@ update_lucky() {
         echo "luci-app-lucky 和 lucky 源代码更新完成。"
     fi
 
-    local lucky_conf="$BUILD_DIR/feeds/small8/lucky/files/luckyuci"
+    local lucky_conf="$(get_custom_feed_worktree_dir)/lucky/files/luckyuci"
     if [ -f "$lucky_conf" ]; then
         sed -i "s/option enabled '1'/option enabled '0'/g" "$lucky_conf"
         sed -i "s/option logger '1'/option logger '0'/g" "$lucky_conf"
@@ -232,7 +389,7 @@ update_lucky() {
         return 0
     fi
 
-    local makefile_path="$BUILD_DIR/feeds/small8/lucky/Makefile"
+    local makefile_path="$(get_custom_feed_worktree_dir)/lucky/Makefile"
     if [ ! -f "$makefile_path" ]; then
         echo "Warning: lucky Makefile not found. Skipping." >&2
         return 0
