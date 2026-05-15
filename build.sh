@@ -206,6 +206,17 @@ fi
 apply_config
 remove_uhttpd_dependency
 
+# Patch kernel config for new symbols (after update.sh clone/reset)
+if grep -qE "ipq60xx|ipq807x" "$BASE_PATH/../$BUILD_DIR/.config" 2>/dev/null; then
+    KERNEL_CFG="$BASE_PATH/../$BUILD_DIR/target/linux/qualcommax/config-6.18"
+    if [ -f "$KERNEL_CFG" ] && ! grep -qF "CONFIG_VIDEO_QCOM_IRIS" "$KERNEL_CFG"; then
+        echo "" >> "$KERNEL_CFG"
+        echo "# Disable Qualcomm iris V4L2 decoder driver (kernel 6.18 new symbol)" >> "$KERNEL_CFG"
+        echo "# CONFIG_VIDEO_QCOM_IRIS is not set" >> "$KERNEL_CFG"
+        echo "Patched kernel config: $KERNEL_CFG"
+    fi
+fi
+
 cd "$BASE_PATH/../$BUILD_DIR"
 make defconfig
 

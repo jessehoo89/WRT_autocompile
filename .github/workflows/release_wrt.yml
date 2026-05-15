@@ -110,18 +110,6 @@ jobs:
           du -sh ./firmware 2>/dev/null || true
           echo "=================================================="
 
-      - name: Patch Kernel Config for New Symbols
-        run: |
-          CONFIG_FILE="./action_build/target/linux/qualcommax/config-6.18"
-          if [ -f "$CONFIG_FILE" ] && ! grep -qF "CONFIG_VIDEO_QCOM_IRIS" "$CONFIG_FILE"; then
-            echo "" >> "$CONFIG_FILE"
-            echo "# Disable Qualcomm iris V4L2 decoder driver (kernel 6.18 new symbol)" >> "$CONFIG_FILE"
-            echo "# CONFIG_VIDEO_QCOM_IRIS is not set" >> "$CONFIG_FILE"
-            echo "Patched $CONFIG_FILE"
-          else
-            echo "No patch needed or already patched"
-          fi
-
       - name: Build Firmware
         run: ./build.sh ${{ inputs.model }}
 
