@@ -220,6 +220,20 @@ fi
 cd "$BASE_PATH/../$BUILD_DIR"
 make defconfig
 
+# Disable kmod-ebtables on kernel 6.18 (bridge/netfilter/ebtables.ko was removed/restructured)
+if grep -qE "CONFIG_ALL_KMODS=y" ".config" 2>/dev/null; then
+    for ebt_pkg in kmod-ebtables kmod-ebtables-ipv4 kmod-ebtables-ipv6 kmod-ebtables-watchers; do
+        if grep -qF "CONFIG_PACKAGE_${ebt_pkg}=y" ".config" 2>/dev/null; then
+            sed -i "s/CONFIG_PACKAGE_${ebt_pkg}=y/# CONFIG_PACKAGE_${ebt_pkg} is not set/" ".config"
+            FIXED=1
+        fi
+    done
+    if [ -n "$FIXED" ]; then
+        make defconfig
+        echo "Disabled kmod-ebtables (kernel 6.18 compatibility)"
+    fi
+fi
+
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
     DISTFEEDS_PATH="$BASE_PATH/../$BUILD_DIR/package/emortal/default-settings/files/99-distfeeds.conf"
     if [ -d "${DISTFEEDS_PATH%/*}" ] && [ -f "$DISTFEEDS_PATH" ]; then
