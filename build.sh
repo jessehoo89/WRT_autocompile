@@ -219,6 +219,9 @@ fi
 
 cd "$BASE_PATH/../$BUILD_DIR"
 make defconfig
+# Disable kmod-qca-ssdk (incompatible with kernel 6.18)
+sed -i '/CONFIG_PACKAGE_kmod-qca-ssdk/d' .config
+echo "# CONFIG_PACKAGE_kmod-qca-ssdk is not set" >> .config
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
     DISTFEEDS_PATH="$BASE_PATH/../$BUILD_DIR/package/emortal/default-settings/files/99-distfeeds.conf"
