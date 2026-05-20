@@ -89,6 +89,7 @@ main() {
     remove_attendedsysupgrade
     fix_kconfig_recursive_dependency
     fix_qca_ssdk_mido_i2c
+    fix_kernel_video_qcom_iris
     install_feeds
     verify_custom_feed_installed_paths
     docker_stack_sync_nftables_compat "$BUILD_DIR" "0"

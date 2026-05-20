@@ -55,6 +55,16 @@ fix_qca_ssdk_mido_i2c() {
     fi
 }
 
+fix_kernel_video_qcom_iris() {
+    local kernel_cfg="$BUILD_DIR/target/linux/qualcommax/config-6.18"
+    if [ -f "$kernel_cfg" ] && ! grep -qF "CONFIG_VIDEO_QCOM_IRIS" "$kernel_cfg"; then
+        echo "" >> "$kernel_cfg"
+        echo "# Disable Qualcomm iris V4L2 decoder driver (kernel 6.18 new symbol)" >> "$kernel_cfg"
+        echo "# CONFIG_VIDEO_QCOM_IRIS is not set" >> "$kernel_cfg"
+        echo "Patched kernel config for VIDEO_QCOM_IRIS"
+    fi
+}
+
 update_default_lan_addr() {
     local CFG_PATH="$BUILD_DIR/package/base-files/files/bin/config_generate"
     if [ -f $CFG_PATH ]; then
