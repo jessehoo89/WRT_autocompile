@@ -46,6 +46,15 @@ fix_kconfig_recursive_dependency() {
     fi
 }
 
+fix_qca_ssdk_mido_i2c() {
+    local qca_ssdk_dir="$BUILD_DIR/package/kernel/qca-ssdk"
+    local patch_file="$BASE_PATH/patches/0100-mido-i2c-qcom-compat.patch"
+    if [ -d "$qca_ssdk_dir" ] && [ -f "$patch_file" ]; then
+        install -Dm644 "$patch_file" "$qca_ssdk_dir/patches/0100-mido-i2c-qcom-compat.patch"
+        echo "Patched qca-ssdk for kernel 6.18 MIDO_I2C_QCOM compatibility"
+    fi
+}
+
 update_default_lan_addr() {
     local CFG_PATH="$BUILD_DIR/package/base-files/files/bin/config_generate"
     if [ -f $CFG_PATH ]; then

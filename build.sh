@@ -177,7 +177,7 @@ remove_uhttpd_dependency() {
 
 apply_config() {
     \cp -f "$CONFIG_FILE" "$BASE_PATH/../$BUILD_DIR/.config"
-
+    
     if grep -qE "(ipq60xx|ipq807x)" "$BASE_PATH/../$BUILD_DIR/.config" &&
         ! grep -q "CONFIG_GIT_MIRROR" "$BASE_PATH/../$BUILD_DIR/.config"; then
         cat "$BASE_PATH/deconfig/nss.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
@@ -206,29 +206,8 @@ fi
 apply_config
 remove_uhttpd_dependency
 
-# Patch kernel config for new symbols (after update.sh clone/reset)
-if grep -qE "ipq60xx|ipq807x" "$BASE_PATH/../$BUILD_DIR/.config" 2>/dev/null; then
-    KERNEL_CFG="$BASE_PATH/../$BUILD_DIR/target/linux/qualcommax/config-6.18"
-    if [ -f "$KERNEL_CFG" ] && ! grep -qF "CONFIG_VIDEO_QCOM_IRIS" "$KERNEL_CFG"; then
-        echo "" >> "$KERNEL_CFG"
-        echo "# Disable Qualcomm iris V4L2 decoder driver (kernel 6.18 new symbol)" >> "$KERNEL_CFG"
-        echo "# CONFIG_VIDEO_QCOM_IRIS is not set" >> "$KERNEL_CFG"
-        echo "Patched kernel config: $KERNEL_CFG"
-    fi
-fi
-
 cd "$BASE_PATH/../$BUILD_DIR"
 make defconfig
-
-# Patch qca-ssdk for kernel 6.18+ compatibility (MIDO_I2C_QCOM removed upstream)
-if grep -qE "ipq60xx|ipq807x" "$BASE_PATH/../$BUILD_DIR/.config" 2>/dev/null; then
-    QCA_SSDK_DIR="$BASE_PATH/../$BUILD_DIR/package/kernel/qca-ssdk"
-    if [ -d "$QCA_SSDK_DIR" ]; then
-        install -Dm644 "$BASE_PATH/patches/0100-mido-i2c-qcom-compat.patch" \
-            "$QCA_SSDK_DIR/patches/0100-mido-i2c-qcom-compat.patch"
-        echo "Patched qca-ssdk for kernel 6.18 MIDO_I2C_QCOM compatibility"
-    fi
-fi
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
     DISTFEEDS_PATH="$BASE_PATH/../$BUILD_DIR/package/emortal/default-settings/files/99-distfeeds.conf"
@@ -254,19 +233,6 @@ FIRMWARE_DIR="$BASE_PATH/../firmware"
 mkdir -p "$FIRMWARE_DIR"
 find "$TARGET_DIR" -type f \( -name "*.bin" -o -name "*.manifest" -o -name "*efi.img.gz" -o -name "*.itb" -o -name "*.fip" -o -name "*.ubi" -o -name "*rootfs.tar.gz" \) -exec cp -f {} "$FIRMWARE_DIR/" \;
 \rm -f "$BASE_PATH/../firmware/Packages.manifest" 2>/dev/null
-
-# 提取并打包 kmod 软件源
-echo ">>> Checking for extract_kmod_repo.sh at $BASE_PATH/extract_kmod_repo.sh"
-if [ -f "$BASE_PATH/extract_kmod_repo.sh" ]; then
-    echo ">>> Script found, executing..."
-    chmod +x "$BASE_PATH/extract_kmod_repo.sh"
-    "$BASE_PATH/extract_kmod_repo.sh" "$BASE_PATH/../$BUILD_DIR"
-else
-    echo ">>> Script NOT found, skipping kmod packaging"
-fi
-
-# 复制 kmod 压缩包到 firmware 目录，便于发布
-find "$BASE_PATH/../$BUILD_DIR/bin/targets/qualcommax/ipq60xx" -name "kmod-repo-*.tar.gz" -exec cp {} "$FIRMWARE_DIR/" \;
 
 if [[ -d action_build ]]; then
     make clean

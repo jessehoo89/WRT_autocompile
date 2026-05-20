@@ -88,6 +88,7 @@ main() {
     fix_easytier_mk
     remove_attendedsysupgrade
     fix_kconfig_recursive_dependency
+    fix_qca_ssdk_mido_i2c
     install_feeds
     verify_custom_feed_installed_paths
     docker_stack_sync_nftables_compat "$BUILD_DIR" "0"
