@@ -228,8 +228,7 @@ if grep -qE "ipq60xx|ipq807x" "$BASE_PATH/../$BUILD_DIR/.config" 2>/dev/null; th
         cat > "$QCA_SSDK_DIR/patches/0100-mido-i2c-qcom-compat.patch" << 'PATCHEOF'
 --- a/src/init/ssdk_dts.c
 +++ b/src/init/ssdk_dts.c
-@@ -1,5 +1,15 @@
- /* SPDX-License-Identifier: GPL-2.0-only */
+@@ -1,4 +1,14 @@
  /* Copyright (c) 2016, 2021 The Linux Foundation. All rights reserved. */
 +
 +/* Compat: Linux 6.18+ removed MIDO_I2C_QCOM from kernel headers */
