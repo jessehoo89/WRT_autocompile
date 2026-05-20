@@ -228,8 +228,10 @@ if grep -qE "ipq60xx|ipq807x" "$BASE_PATH/../$BUILD_DIR/.config" 2>/dev/null; th
         cat > "$QCA_SSDK_DIR/patches/0100-mido-i2c-qcom-compat.patch" << 'PATCHEOF'
 --- a/src/init/ssdk_dts.c
 +++ b/src/init/ssdk_dts.c
-@@ -1,4 +1,14 @@
- /* Copyright (c) 2016, 2021 The Linux Foundation. All rights reserved. */
+@@ -38,6 +38,16 @@
+ #include <linux/of.h>
+ #include <linux/of_mdio.h>
+ #include <linux/of_platform.h>
 +
 +/* Compat: Linux 6.18+ removed MIDO_I2C_QCOM from kernel headers */
 +#ifndef MIDO_I2C_QCOM
@@ -240,8 +242,8 @@ if grep -qE "ipq60xx|ipq807x" "$BASE_PATH/../$BUILD_DIR/.config" 2>/dev/null; th
 +#endif
 +#endif
 +
- #include "sw.h"
- #include "fal_init.h"
+ #if IS_ENABLED(CONFIG_MDIO_I2C)
+ #include <linux/mdio/mdio-i2c.h>
 PATCHEOF
         echo "Patched qca-ssdk for kernel 6.18 MIDO_I2C_QCOM compatibility"
     fi
