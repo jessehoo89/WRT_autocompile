@@ -219,9 +219,34 @@ fi
 
 cd "$BASE_PATH/../$BUILD_DIR"
 make defconfig
-# Disable kmod-qca-ssdk (incompatible with kernel 6.18)
-sed -i '/CONFIG_PACKAGE_kmod-qca-ssdk/d' .config
-echo "# CONFIG_PACKAGE_kmod-qca-ssdk is not set" >> .config
+
+# Patch qca-ssdk for kernel 6.18+ compatibility (MIDO_I2C_QCOM removed upstream)
+if grep -qE "ipq60xx|ipq807x" "$BASE_PATH/../$BUILD_DIR/.config" 2>/dev/null; then
+    QCA_SSDK_DIR="$BASE_PATH/../$BUILD_DIR/package/kernel/qca-ssdk"
+    if [ -d "$QCA_SSDK_DIR" ]; then
+        mkdir -p "$QCA_SSDK_DIR/patches"
+        cat > "$QCA_SSDK_DIR/patches/0100-mido-i2c-qcom-compat.patch" << 'PATCHEOF'
+--- a/src/init/ssdk_dts.c
++++ b/src/init/ssdk_dts.c
+@@ -1,5 +1,15 @@
+ /* SPDX-License-Identifier: GPL-2.0-only */
+ /* Copyright (c) 2016, 2021 The Linux Foundation. All rights reserved. */
++
++/* Compat: Linux 6.18+ removed MIDO_I2C_QCOM from kernel headers */
++#ifndef MIDO_I2C_QCOM
++#ifdef MDIO_I2C_C45
++#define MIDO_I2C_QCOM MDIO_I2C_C45
++#else
++#define MIDO_I2C_QCOM 0
++#endif
++#endif
++
+ #include "sw.h"
+ #include "fal_init.h"
+PATCHEOF
+        echo "Patched qca-ssdk for kernel 6.18 MIDO_I2C_QCOM compatibility"
+    fi
+fi
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
     DISTFEEDS_PATH="$BASE_PATH/../$BUILD_DIR/package/emortal/default-settings/files/99-distfeeds.conf"
