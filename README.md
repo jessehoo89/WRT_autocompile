@@ -174,6 +174,6 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 
 ### 使用方法
 
-将 `firmware/kmod_packages/` 目录部署到 HTTP 服务器上，即可作为自定义 kmod 软件源供其他同内核版本的设备使用。
+将 `firmware/kmod_packages/` 目录部署到 HTTP 服务器上，即可作为自定义 kmod 软件源供刷入对应固件的设备使用。
 
 > **💡 自建 kmod 软件源详细教程：** [https://www.right.com.cn/forum/forum.php?mod=viewthread&tid=8456143](https://www.right.com.cn/forum/forum.php?mod=viewthread&tid=8456143)
