@@ -672,24 +672,41 @@ update_package() {
 }
 
 fix_qca_ssdk_modinfo() {
-    local patch_dir="$BASE_PATH/patches"
-    local script_src="$patch_dir/patch_modinfo.py"
-    local patch_src="$patch_dir/100-fix-qca-ssdk-modinfo.patch"
-    local target_patch_dir="$BUILD_DIR/package/kernel/qca-ssdk/patches"
-    local target_script_dir="$BUILD_DIR/scripts"
+    local script_src="$BASE_PATH/patches/patch_modinfo.py"
+    local makefile="$BUILD_DIR/package/kernel/qca-ssdk/Makefile"
 
+    # 安装 patch_modinfo.py 脚本
     if [ -f "$script_src" ]; then
-        cp -f "$script_src" "$target_script_dir/patch_modinfo.py"
-        echo "已安装 patch_modinfo.py 到 $target_script_dir/"
+        cp -f "$script_src" "$BUILD_DIR/scripts/patch_modinfo.py"
+        echo "已安装 patch_modinfo.py"
     else
         echo "警告：patch_modinfo.py 未找到 ($script_src)" >&2
+        return 1
     fi
 
-    if [ -f "$patch_src" ]; then
-        mkdir -p "$target_patch_dir"
-        cp -f "$patch_src" "$target_patch_dir/100-fix-qca-ssdk-modinfo.patch"
-        echo "已安装 qca-ssdk modinfo 补丁到 $target_patch_dir/"
+    # 在 Build/Compile 的 $(CP) ... 行后追加 modinfo 清理行
+    if [ -f "$makefile" ]; then
+        python3 /dev/stdin "$makefile" << 'PYEOF'
+import sys, re
+
+path = sys.argv[1]
+with open(path, 'r') as f:
+    content = f.read()
+
+# 在 $(CP) $(QCA_SSDK_SYMVERS) 行后追加一行
+line = '\tpython3 $(TOPDIR)/scripts/patch_modinfo.py $(PKG_BUILD_DIR)/build/bin/qca-ssdk.ko mdio-bitbang mdio-i2c\n'
+pattern = re.compile(r'^(\t\$\(CP\) \$\(QCA_SSDK_SYMVERS\).*)$', re.MULTILINE)
+replacement = r'\1' + '\n' + line.rstrip('\n')
+
+content = pattern.sub(replacement, content, count=1)
+
+with open(path, 'w') as f:
+    f.write(content)
+print('已插入 modinfo 修复')
+PYEOF
+        echo "已插入 modinfo 修复到 $makefile"
     else
-        echo "警告：qca-ssdk modinfo 补丁文件未找到 ($patch_src)" >&2
+        echo "警告：qca-ssdk Makefile 未找到 ($makefile)" >&2
+        return 1
     fi
 }
