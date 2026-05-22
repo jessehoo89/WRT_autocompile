@@ -670,3 +670,26 @@ update_package() {
         echo "更新软件包 $1 到 $PKG_VER $PKG_HASH"
     fi
 }
+
+fix_qca_ssdk_modinfo() {
+    local patch_dir="$BASE_PATH/patches"
+    local script_src="$patch_dir/patch_modinfo.py"
+    local patch_src="$patch_dir/100-fix-qca-ssdk-modinfo.patch"
+    local target_patch_dir="$BUILD_DIR/package/kernel/qca-ssdk/patches"
+    local target_script_dir="$BUILD_DIR/scripts"
+
+    if [ -f "$script_src" ]; then
+        cp -f "$script_src" "$target_script_dir/patch_modinfo.py"
+        echo "已安装 patch_modinfo.py 到 $target_script_dir/"
+    else
+        echo "警告：patch_modinfo.py 未找到 ($script_src)" >&2
+    fi
+
+    if [ -f "$patch_src" ]; then
+        mkdir -p "$target_patch_dir"
+        cp -f "$patch_src" "$target_patch_dir/100-fix-qca-ssdk-modinfo.patch"
+        echo "已安装 qca-ssdk modinfo 补丁到 $target_patch_dir/"
+    else
+        echo "警告：qca-ssdk modinfo 补丁文件未找到 ($patch_src)" >&2
+    fi
+}

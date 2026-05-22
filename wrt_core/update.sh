@@ -88,6 +88,7 @@ main() {
     fix_easytier_mk
     remove_attendedsysupgrade
     fix_kconfig_recursive_dependency
+    fix_qca_ssdk_modinfo
     fix_qca_ssdk_mido_i2c
     fix_kernel_video_qcom_iris
     install_feeds
