@@ -95,9 +95,8 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 
 *   **M2**:
     ```bash
-    ./build.sh zn_m2_immwrt
+    ./build.sh zn_m2_immwrt_nowifi_kmod
     ./build.sh zn_m2_libwrt
-    ./build.sh zn_m2_libwrt_nowifi
     ```
 
 ### Gemtek
@@ -153,11 +152,11 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 | 目标 | 说明 |
 |:-----|:------|
 | `jdcloud_ipq60xx_libwrt_kmod` | 京东云 IPQ60xx 系列（libWRT），全量 kmod + kmod 软件源 |
-| `zn_m2_libwrt_nowifi` | 兆能 M2（libWRT，不含 WiFi），全量 kmod + kmod 软件源 |
+| `zn_m2_immwrt_nowifi_kmod` | 兆能 M2（immwrt，不含 WiFi），全量 kmod + kmod 软件源 |
 
 ```bash
 ./build.sh jdcloud_ipq60xx_libwrt_kmod
-./build.sh zn_m2_libwrt_nowifi
+./build.sh zn_m2_immwrt_nowifi_kmod
 ```
 
 ### 产物说明
