@@ -34,6 +34,7 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
     ```bash
     ./build.sh jdcloud_ipq60xx_immwrt
     ./build.sh jdcloud_ipq60xx_libwrt
+    ./build.sh jdcloud_ipq60xx_libwrt_kmod
     ```
 *   **百里**:
     ```bash
@@ -96,6 +97,7 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
     ```bash
     ./build.sh zn_m2_immwrt
     ./build.sh zn_m2_libwrt
+    ./build.sh zn_m2_libwrt_nowifi
     ```
 
 ### Gemtek
@@ -140,10 +142,35 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 2.  将「appfilter」当前状态**从已禁用更改为已启用**
 3.  完成配置后，点击**启动**按钮激活服务
 
-## 8. kmod包编译
+## 8. kmod包编译（ALL_KMODS 全量编译）
 
-以下项目在固件编译过程中将同时编译所有kmod，生成索引和密钥并打包
+本仓库特色——**编译时设置 `CONFIG_ALL_KMODS=y`，全量编译目标平台的所有内核模块（kmod），并自动生成软件源索引及签名密钥，最终打包为可供用户直接下载的 kmod 软件源。**
 
-jdcloud_ipq60xx_libwrt_kmod
+### 适用目标
 
-zn_m2_libwrt_nowifi
+以下两个编译选项在固件构建的同时，会全量编译所有 kmod 并打包发布：
+
+| 目标 | 说明 |
+|:-----|:------|
+| `jdcloud_ipq60xx_libwrt_kmod` | 京东云 IPQ60xx 系列（libWRT），全量 kmod + kmod 软件源 |
+| `zn_m2_libwrt_nowifi` | 兆能 M2（libWRT，不含 WiFi），全量 kmod + kmod 软件源 |
+
+```bash
+./build.sh jdcloud_ipq60xx_libwrt_kmod
+./build.sh zn_m2_libwrt_nowifi
+```
+
+### 产物说明
+
+编译完成后，产物目录中包含：
+
+- **固件**（`firmware/`）：设备固件
+- **kmod 包集合**（`firmware/kmod_packages/`）：全量编译的 `.ipk` 内核模块包
+- **软件源索引**（`Packaging`, `Packages.gz`）：opkg 软件源标准索引
+- **签名密钥**：用于 opkg 签名验证
+
+### 使用方法
+
+将 `firmware/kmod_packages/` 目录部署到 HTTP 服务器上，即可作为自定义 kmod 软件源供其他同内核版本的设备使用。
+
+> **💡 自建 kmod 软件源详细教程：** [https://www.right.com.cn/forum/forum.php?mod=viewthread&tid=8456143](https://www.right.com.cn/forum/forum.php?mod=viewthread&tid=8456143)
