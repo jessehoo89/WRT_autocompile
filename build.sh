@@ -228,17 +228,6 @@ fi
 make download -j$(($(nproc) * 2))
 make -j$(($(nproc) + 1)) || make -j1 V=s
 
-# 提取并打包 kmod 软件源
-KMOD_SCRIPT="$BASE_PATH/wrt_core/extract_kmod_repo.sh"
-echo ">>> Checking for extract_kmod_repo.sh at $KMOD_SCRIPT"
-if [ -f "$KMOD_SCRIPT" ]; then
-    echo ">>> Script found, executing..."
-    chmod +x "$KMOD_SCRIPT"
-    "$KMOD_SCRIPT" "$BASE_PATH/../$BUILD_DIR"
-else
-    echo ">>> Script NOT found, skipping kmod packaging"
-fi
-
 FIRMWARE_DIR="$BASE_PATH/../firmware"
 \rm -rf "$FIRMWARE_DIR"
 mkdir -p "$FIRMWARE_DIR"
