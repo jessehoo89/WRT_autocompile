@@ -180,7 +180,12 @@ apply_config() {
     
     if grep -qE "(ipq60xx|ipq807x)" "$BASE_PATH/../$BUILD_DIR/.config" &&
         ! grep -q "CONFIG_GIT_MIRROR" "$BASE_PATH/../$BUILD_DIR/.config"; then
-        cat "$BASE_PATH/deconfig/nss.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+        # nowifi 设备跳过 nss.config 中的无线选项，改用 nss-wifi-off.config
+        if echo "$Dev" | grep -q "nowifi"; then
+            cat "$BASE_PATH/deconfig/nss-wifi-off.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+        else
+            cat "$BASE_PATH/deconfig/nss.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+        fi
     fi
 
     cat "$BASE_PATH/deconfig/compile_base.config" >> "$BASE_PATH/../$BUILD_DIR/.config"

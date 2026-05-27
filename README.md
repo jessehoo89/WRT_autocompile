@@ -145,6 +145,33 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 2.  将「appfilter」当前状态**从已禁用更改为已启用**
 3.  完成配置后，点击**启动**按钮激活服务
 
+## nowifi 专用编译选项（禁用全量无线）
+
+**适用于高通 NSS 设备（ipq60xx/ipq807x）**，编译完全不含无线功能的固件。
+
+### 命名规则
+
+设备名中包含 `nowifi` 即启用该模式，如：
+- `zn_m2_immwrt_nowifi_kmod` ✓
+- `jdcloud_ipq60xx_immwrt_nowifi_kmod` ✓ (示例，需先创建对应配置)
+
+### 工作原理
+
+`build.sh` 的 `apply_config()` 会自动检测设备名是否包含 `nowifi`：
+
+- ✅ **nowifi 设备** → 跳过 `nss.config` → 改用 `nss-wifi-off.config`
+  - 保留 NSS 核心驱动（NSS offload、驱动加速等）
+  - 全量禁用无线（8层覆盖：内核子系统 → NSS卸载 → ath驱动 → 固件 → 用户态工具 → 脚本 → ucode → LuCI界面）
+- ❌ **普通设备** → 沿用 `nss.config`，无线功能不受影响
+
+### 创建新的 nowifi 编译选项
+
+1. 在 `wrt_core/compilecfg/` 创建 `{device}_nowifi_{variant}.ini`
+2. 在 `wrt_core/deconfig/` 创建 `{device}_nowifi_{variant}.config`
+3. `build.sh` 自动检测 nowifi 关键字 → 自动应用 `nss-wifi-off.config`
+
+> **注意：** `nss-wifi-off.config` 目前仅适用于高通 NSS 平台设备。非 NSS 设备的 nowifi 选项需自行配置无线禁用。
+
 ## 8. kmod包编译（ALL_KMODS 全量编译）
 
 本仓库特色——**编译时设置 `CONFIG_ALL_KMODS=y`，全量编译目标平台的所有内核模块（kmod），并自动生成软件源索引及签名密钥，最终打包为可供用户直接下载的 kmod 软件源。**
