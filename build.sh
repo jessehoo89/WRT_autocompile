@@ -214,25 +214,8 @@ remove_uhttpd_dependency
 cd "$BASE_PATH/../$BUILD_DIR"
 make defconfig
 
-# For nowifi devices, fix ath11k memory config after defconfig
-# CONFIG_ALL_KMODS=y will enable kmod-ath11k, but nss-wifi-off.config
-# disables CONFIG_ATH11K_MEM_PROFILE_512M which causes iommu build error.
-# We need to restore this config while keeping wireless disabled.
-if echo "$Dev" | grep -q "nowifi"; then
-    echo "Applying nowifi post-defconfig patch..."
-    echo "Current ATH11K config in .config:"
-    grep "ATH11K" .config || echo "No ATH11K config found"
-    # Try multiple patterns to restore ath11k memory profile
-    sed -i 's/# CONFIG_ATH11K_MEM_PROFILE_512M is not set/CONFIG_ATH11K_MEM_PROFILE_512M=y/' .config
-    sed -i 's/CONFIG_ATH11K_MEM_PROFILE_256=y/CONFIG_ATH11K_MEM_PROFILE_512M=y/' .config
-    # If still not set, add it
-    if ! grep -q "CONFIG_ATH11K_MEM_PROFILE_512M=y" .config; then
-        echo "CONFIG_ATH11K_MEM_PROFILE_512M=y" >> .config
-        echo "Added CONFIG_ATH11K_MEM_PROFILE_512M=y to .config"
-    fi
-    echo "After patch, ATH11K config:"
-    grep "ATH11K" .config || echo "No ATH11K config found"
-fi
+# ATH11K_MEM_PROFILE_512M is now set in nss-wifi-off.config directly
+# No post-defconfig patch needed
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
     DISTFEEDS_PATH="$BASE_PATH/../$BUILD_DIR/package/emortal/default-settings/files/99-distfeeds.conf"
