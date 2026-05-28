@@ -218,15 +218,18 @@ make defconfig
 # CONFIG_ALL_KMODS=y may re-enable them, so we need to disable again
 if echo "$Dev" | grep -q "nowifi"; then
     echo "Applying nowifi post-defconfig patch..."
-    sed -i 's/^CONFIG_MAC80211=y$/CONFIG_MAC80211=n/' .config
-    sed -i 's/^CONFIG_PACKAGE_kmod-mac80211=y$/# CONFIG_PACKAGE_kmod-mac80211 is not set/' .config
-    sed -i 's/^CONFIG_PACKAGE_kmod-cfg80211=y$/# CONFIG_PACKAGE_kmod-cfg80211 is not set/' .config
-    sed -i 's/^CONFIG_PACKAGE_kmod-ath=y$/# CONFIG_PACKAGE_kmod-ath is not set/' .config
-    sed -i 's/^CONFIG_PACKAGE_kmod-ath10k=y$/# CONFIG_PACKAGE_kmod-ath10k is not set/' .config
-    sed -i 's/^CONFIG_PACKAGE_kmod-ath10k-ct=y$/# CONFIG_PACKAGE_kmod-ath10k-ct is not set/' .config
-    sed -i 's/^CONFIG_PACKAGE_kmod-ath11k=y$/# CONFIG_PACKAGE_kmod-ath11k is not set/' .config
-    sed -i 's/^CONFIG_PACKAGE_kmod-ath11k-ahb=y$/# CONFIG_PACKAGE_kmod-ath11k-ahb is not set/' .config
-    sed -i 's/^CONFIG_PACKAGE_kmod-ath11k-pci=y$/# CONFIG_PACKAGE_kmod-ath11k-pci is not set/' .config
+    # Use more flexible regex to match CONFIG lines
+    sed -i 's/CONFIG_MAC80211=y/CONFIG_MAC80211=n/' .config
+    sed -i 's/CONFIG_PACKAGE_kmod-mac80211=y/# CONFIG_PACKAGE_kmod-mac80211 is not set/' .config
+    sed -i 's/CONFIG_PACKAGE_kmod-cfg80211=y/# CONFIG_PACKAGE_kmod-cfg80211 is not set/' .config
+    sed -i 's/CONFIG_PACKAGE_kmod-ath=y/# CONFIG_PACKAGE_kmod-ath is not set/' .config
+    sed -i 's/CONFIG_PACKAGE_kmod-ath10k=y/# CONFIG_PACKAGE_kmod-ath10k is not set/' .config
+    sed -i 's/CONFIG_PACKAGE_kmod-ath10k-ct=y/# CONFIG_PACKAGE_kmod-ath10k-ct is not set/' .config
+    sed -i 's/CONFIG_PACKAGE_kmod-ath11k=y/# CONFIG_PACKAGE_kmod-ath11k is not set/' .config
+    sed -i 's/CONFIG_PACKAGE_kmod-ath11k-ahb=y/# CONFIG_PACKAGE_kmod-ath11k-ahb is not set/' .config
+    sed -i 's/CONFIG_PACKAGE_kmod-ath11k-pci=y/# CONFIG_PACKAGE_kmod-ath11k-pci is not set/' .config
+    echo "Disabled wireless modules in .config:"
+    grep -E "MAC80211|ath11k|ath10k|cfg80211" .config || echo "No wireless config found"
     make defconfig
 fi
 
