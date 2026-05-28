@@ -220,9 +220,18 @@ make defconfig
 # We need to restore this config while keeping wireless disabled.
 if echo "$Dev" | grep -q "nowifi"; then
     echo "Applying nowifi post-defconfig patch..."
-    # Restore ath11k memory profile (needed for kmod-ath11k to compile)
+    echo "Current ATH11K config in .config:"
+    grep "ATH11K" .config || echo "No ATH11K config found"
+    # Try multiple patterns to restore ath11k memory profile
     sed -i 's/# CONFIG_ATH11K_MEM_PROFILE_512M is not set/CONFIG_ATH11K_MEM_PROFILE_512M=y/' .config
-    echo "Restored CONFIG_ATH11K_MEM_PROFILE_512M=y"
+    sed -i 's/CONFIG_ATH11K_MEM_PROFILE_256=y/CONFIG_ATH11K_MEM_PROFILE_512M=y/' .config
+    # If still not set, add it
+    if ! grep -q "CONFIG_ATH11K_MEM_PROFILE_512M=y" .config; then
+        echo "CONFIG_ATH11K_MEM_PROFILE_512M=y" >> .config
+        echo "Added CONFIG_ATH11K_MEM_PROFILE_512M=y to .config"
+    fi
+    echo "After patch, ATH11K config:"
+    grep "ATH11K" .config || echo "No ATH11K config found"
 fi
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
