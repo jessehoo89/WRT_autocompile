@@ -88,10 +88,10 @@ main() {
     fix_easytier_mk
     remove_attendedsysupgrade
     fix_kconfig_recursive_dependency
-    fix_qca_ssdk_modinfo
-    fix_qca_ssdk_mido_i2c
     fix_kernel_video_qcom_iris
     install_feeds
+    fix_qca_ssdk_modinfo
+    fix_qca_ssdk_mido_i2c
     verify_custom_feed_installed_paths
     docker_stack_sync_nftables_compat "$BUILD_DIR" "0"
     fix_cups_libcups_avahi_depends
