@@ -47,7 +47,7 @@ fix_kconfig_recursive_dependency() {
 }
 
 fix_qca_ssdk_mido_i2c() {
-    local qca_ssdk_dir="$BUILD_DIR/package/kernel/qca-ssdk"
+    local qca_ssdk_dir="$BUILD_DIR/package/qca-nss/qca-ssdk"
     local patch_file="$BASE_PATH/patches/0100-mido-i2c-qcom-compat.patch"
     if [ -d "$qca_ssdk_dir" ] && [ -f "$patch_file" ]; then
         install -Dm644 "$patch_file" "$qca_ssdk_dir/patches/0100-mido-i2c-qcom-compat.patch"
@@ -354,7 +354,7 @@ EOF
 }
 
 update_script_priority() {
-    local qca_drv_path="$BUILD_DIR/package/feeds/nss_packages/qca-nss-drv/files/qca-nss-drv.init"
+    local qca_drv_path="$BUILD_DIR/package/qca-nss/qca-nss-drv/files/qca-nss-drv.init"
     if [ -d "${qca_drv_path%/*}" ] && [ -f "$qca_drv_path" ]; then
         sed -i 's/START=.*/START=88/g' "$qca_drv_path"
     fi

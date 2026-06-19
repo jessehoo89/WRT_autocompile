@@ -673,7 +673,7 @@ update_package() {
 
 fix_qca_ssdk_modinfo() {
     local script_src="$BASE_PATH/patches/patch_modinfo.py"
-    local makefile="$BUILD_DIR/package/kernel/qca-ssdk/Makefile"
+    local makefile="$BUILD_DIR/package/qca-nss/qca-ssdk/Makefile"
 
     # 安装 patch_modinfo.py 脚本
     if [ -f "$script_src" ]; then
