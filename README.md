@@ -1,3 +1,15 @@
+# 刷机通道（很重要，用错必砖）
+
+| 通道 | 只接受 | 怎么进 |
+|:--|:--|:--|
+| U-Boot 网页 | `.ubi`（factory / nand-factory） | 断电，按住 RESET 上电，网线接 **LAN 口**，电脑设 `192.168.1.2/24`，访问 `http://192.168.1.1` |
+| LuCI | `.bin`（sysupgrade） | 系统内「系统 → 备份/刷写固件」 |
+
+- **`factory.ubi` 只能在 U-Boot 网页里刷**，在 LuCI 里上传会写坏分区导致无法启动（此时只能靠 U-Boot 救回来）。
+- **`sysupgrade.bin` 只能在 LuCI / `sysupgrade -n` 里用**，在 U-Boot 里上传无效。
+- ipq60xx 两条限制：紧挨 RESET 的 WAN 口进不去 U-Boot 网页；原机 256MB 内存时 U-Boot 上传上限约 95MB。
+- 小分区镜像可以刷进大分区（UBI 首次启动会自动扩容 `rootfs_data`），**大分区镜像刷进小分区必砖**。
+
 # 特色说明
 
 ## 本仓库带_kmod后缀的编译选项（如：zn_m2_immwrt_nowifi_kmod），在编译固件时将全量编译kmod并打包发布，方便使用者自建kmod软件源，避免部分有kmod依赖的软件无法安装的问题
@@ -25,7 +37,7 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
     ```
 2.  进入目录：
     ```bash
-    cd wrt_release
+    cd WRT_autocompile
     ```
 
 ## 4. 编译固件

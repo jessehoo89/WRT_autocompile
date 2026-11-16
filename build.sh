@@ -234,7 +234,29 @@ if [[ -d $TARGET_DIR ]]; then
 fi
 
 make download -j$(($(nproc) * 2))
-make -j$(($(nproc) + 1)) || make -j1 V=s
+
+# 失败时把最近修改的包编译日志打出来，并写成 GitHub annotation，
+# 否则并行构建只留一句 "xyz failed to build"，看不到真正的报错。
+dump_build_failure() {
+    echo "===== 构建失败，导出最近修改的包编译日志 ====="
+    local f
+    for f in $(ls -t "$BUILD_DIR"/logs/package/*/*/compile.txt 2>/dev/null | head -3); do
+        echo "----- $f -----"
+        tail -n 60 "$f"
+        local errline
+        errline=$(grep -m1 -iE "error:|Error [0-9]+" "$f" 2>/dev/null | cut -c1-200)
+        [ -n "$errline" ] && echo "::error file=$f::$errline"
+    done
+    echo "===== 日志导出结束 ====="
+}
+
+if ! make -j$(($(nproc) + 1)); then
+    echo "并行构建失败，改用单线程 V=s 复现以取得完整报错..."
+    if ! make -j1 V=s; then
+        dump_build_failure
+        exit 2
+    fi
+fi
 
 FIRMWARE_DIR="$BASE_PATH/../firmware"
 \rm -rf "$FIRMWARE_DIR"

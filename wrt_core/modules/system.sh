@@ -72,6 +72,16 @@ update_default_lan_addr() {
     fi
 }
 
+# 按"整词"从 Makefile 的包列表里摘掉一个包名。
+# 旧写法 sed -i '/pkg/d' 是整行删除：上游若把多个包写在同一行
+# （例如 kmod-qca-nss-drv kmod-qca-nss-ecm kmod-qca-nss-dp kmod-qca-ssdk），
+# 会把同一行的 kmod-qca-nss-dp / kmod-qca-ssdk 一起删掉，最终表现为网口全部不可用。
+drop_pkg() {
+    local file="$1" pkg="$2"
+    [ -f "$file" ] || return 0
+    sed -i -E "s/(^|[[:space:]])${pkg}([[:space:]]|$)/\1\2/g" "$file"
+}
+
 remove_something_nss_kmod() {
     local ipq_mk_path="$BUILD_DIR/target/linux/qualcommax/Makefile"
     local target_mks=("$BUILD_DIR/target/linux/qualcommax/ipq60xx/target.mk" "$BUILD_DIR/target/linux/qualcommax/ipq807x/target.mk")
@@ -83,19 +93,19 @@ remove_something_nss_kmod() {
     done
 
     if [ -f "$ipq_mk_path" ]; then
-        sed -i '/kmod-qca-nss-drv-eogremgr/d' "$ipq_mk_path"
-        sed -i '/kmod-qca-nss-drv-gre/d' "$ipq_mk_path"
-        sed -i '/kmod-qca-nss-drv-map-t/d' "$ipq_mk_path"
-        sed -i '/kmod-qca-nss-drv-match/d' "$ipq_mk_path"
-        sed -i '/kmod-qca-nss-drv-mirror/d' "$ipq_mk_path"
-        sed -i '/kmod-qca-nss-drv-tun6rd/d' "$ipq_mk_path"
-        sed -i '/kmod-qca-nss-drv-tunipip6/d' "$ipq_mk_path"
-        sed -i '/kmod-qca-nss-drv-vxlanmgr/d' "$ipq_mk_path"
-        sed -i '/kmod-qca-nss-drv-wifi-meshmgr/d' "$ipq_mk_path"
-        sed -i '/kmod-qca-nss-macsec/d' "$ipq_mk_path"
-
-        sed -i 's/automount //g' "$ipq_mk_path"
-        sed -i 's/cpufreq //g' "$ipq_mk_path"
+        # 逐个整词摘除，不再整行删除（见 drop_pkg 注释）
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-drv-eogremgr
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-drv-gre
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-drv-map-t
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-drv-match
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-drv-mirror
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-drv-tun6rd
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-drv-tunipip6
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-drv-vxlanmgr
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-drv-wifi-meshmgr
+        drop_pkg "$ipq_mk_path" kmod-qca-nss-macsec
+        drop_pkg "$ipq_mk_path" automount
+        drop_pkg "$ipq_mk_path" cpufreq
     fi
 }
 
@@ -136,35 +146,20 @@ apply_hash_fixes() {
 }
 
 update_ath11k_fw() {
-    local makefile="$BUILD_DIR/package/firmware/ath11k-firmware/Makefile"
-    local new_mk="$BASE_PATH/patches/ath11k_fw.mk"
-    local url="https://raw.githubusercontent.com/VIKINGYFY/immortalwrt/refs/heads/main/package/firmware/ath11k-firmware/Makefile"
+    # 说明：ath11k 固件包名（-ddwrt）由上游 target.mk 直接给出，无需在这里改名。
+    # 旧实现每次构建都从 raw.githubusercontent.com 拉取并覆盖 ath11k-firmware 的 Makefile：
+    #   1) 不锁 commit → 同一份代码不同时间构建产物不同（不可复现）
+    #   2) 下载失败直接 exit 1 → 网络抖动就让整个构建失败
+    # 这里只保留幂等的包名兜底，不再联网。
     local ipq60_target="$BUILD_DIR/target/linux/qualcommax/ipq60xx/target.mk"
     local ipq807_target="$BUILD_DIR/target/linux/qualcommax/ipq807x/target.mk"
 
-    if [ -d "$(dirname "$makefile")" ]; then
-        echo "正在更新 ath11k-firmware Makefile..."
-        if ! curl -fsSL -o "$new_mk" "$url"; then
-            echo "错误：从 $url 下载 ath11k-firmware Makefile 失败" >&2
-            exit 1
-        fi
-        if [ ! -s "$new_mk" ]; then
-            echo "错误：下载的 ath11k-firmware Makefile 为空文件" >&2
-            exit 1
-        fi
-        mv -f "$new_mk" "$makefile"
+    if [ -f "$ipq60_target" ]; then
+        sed -i 's/ath11k-firmware-ipq6018\([^-[:alnum:]_]\|$\)/ath11k-firmware-ipq6018-ddwrt\1/g' "$ipq60_target"
+    fi
 
-        if [ -f "$ipq60_target" ]; then
-            sed -i 's/ath11k-firmware-ipq6018\([^-[:alnum:]_]\|$\)/ath11k-firmware-ipq6018-ddwrt\1/g' "$ipq60_target"
-        fi
-
-        if [ -f "$ipq807_target" ]; then
-            sed -i 's/ath11k-firmware-ipq8074\([^-[:alnum:]_]\|$\)/ath11k-firmware-ipq8074-ddwrt\1/g' "$ipq807_target"
-        fi
-
-        if [ -f "$ipq60_target" ] || [ -f "$ipq807_target" ]; then
-            echo "已同步 ipq60xx/ipq807x ath11k 固件依赖为 ddwrt 包名。"
-        fi
+    if [ -f "$ipq807_target" ]; then
+        sed -i 's/ath11k-firmware-ipq8074\([^-[:alnum:]_]\|$\)/ath11k-firmware-ipq8074-ddwrt\1/g' "$ipq807_target"
     fi
 }
 
@@ -222,9 +217,11 @@ update_tcping() {
 
     if [ -d "$(dirname "$tcping_path")" ]; then
         echo "正在更新 tcping Makefile..."
-        if ! curl -fsSL -o "$tcping_path" "$url"; then
-            echo "错误：从 $url 下载 tcping Makefile 失败" >&2
-            exit 1
+        if ! curl -fsSL -o "$tcping_path.tmp" "$url"; then
+            echo "警告：从 $url 下载 tcping Makefile 失败，沿用仓库自带版本" >&2
+            rm -f "$tcping_path.tmp"
+        else
+            mv -f "$tcping_path.tmp" "$tcping_path"
         fi
     fi
 }
@@ -383,9 +380,11 @@ fix_quickstart() {
     local url="https://gist.githubusercontent.com/puteulanus/1c180fae6bccd25e57eb6d30b7aa28aa/raw/istore_backend.lua"
     if [ -f "$file_path" ]; then
         echo "正在修复 quickstart..."
-        if ! curl -fsSL -o "$file_path" "$url"; then
-            echo "错误：从 $url 下载 istore_backend.lua 失败" >&2
-            exit 1
+        if ! curl -fsSL -o "$file_path.tmp" "$url"; then
+            echo "警告：从 $url 下载 istore_backend.lua 失败，沿用仓库自带版本" >&2
+            rm -f "$file_path.tmp"
+        else
+            mv -f "$file_path.tmp" "$file_path"
         fi
     fi
 }
