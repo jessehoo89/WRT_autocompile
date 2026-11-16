@@ -90,6 +90,7 @@ main() {
     fix_kconfig_recursive_dependency
     fix_kernel_video_qcom_iris
     install_feeds
+    downgrade_gettext_full
     fix_qca_ssdk_modinfo
     fix_qca_ssdk_mido_i2c
     verify_custom_feed_installed_paths

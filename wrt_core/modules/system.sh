@@ -736,3 +736,33 @@ remove_tweaked_packages() {
         fi
     fi
 }
+
+
+# gettext-full 1.0（gnulib 版）宿主编译时报：
+#   gnulib-lib/options.h:163:10: fatal error: stdcountof.h: No such file or directory
+# → package/libs/gettext-full [host] failed to build → make world Error 1。
+# 上游 2026-10-10 的 "Merge Official Source" 同时做了两件事：把 qca-nss 搬进仓库、
+# 把 gettext 升到 1.0，因此无法靠固定源码版本规避（老版本没有 package/qca-nss，
+# 本仓库依赖该路径的补丁会失效）。
+# 折中方案：其余源码保持 main，仅把 gettext-full 这一个编译期包回退到 0.24.2。
+GETTEXT_FALLBACK_COMMIT=11152dd84230f07dcc524137c81db15b818093c9
+
+downgrade_gettext_full() {
+    local pkg="package/libs/gettext-full"
+    [ -f "$BUILD_DIR/$pkg/Makefile" ] || return 0
+    grep -q 'PKG_VERSION:=1\.0' "$BUILD_DIR/$pkg/Makefile" 2>/dev/null || return 0
+
+    echo "检测到 gettext-full 1.0，回退到 0.24.2（规避 stdcountof.h 缺失）..."
+    if (
+        cd "$BUILD_DIR" || exit 1
+        git fetch --depth 1 origin "$GETTEXT_FALLBACK_COMMIT" >/dev/null 2>&1 || exit 1
+        rm -rf "$pkg"
+        git checkout FETCH_HEAD -- "$pkg" >/dev/null 2>&1 || exit 1
+    ); then
+        echo -n "gettext-full 已回退到: "
+        grep -m1 'PKG_VERSION' "$BUILD_DIR/$pkg/Makefile" || true
+    else
+        echo "警告：gettext-full 回退失败，构建可能仍因 stdcountof.h 失败" >&2
+    fi
+    return 0
+}
