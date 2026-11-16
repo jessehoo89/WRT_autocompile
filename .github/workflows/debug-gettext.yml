@@ -1,5 +1,5 @@
-name: Debug gettext host build
-run-name: Debug gettext - ${{ inputs.model }}
+name: Debug single package build
+run-name: Debug pkg - ${{ inputs.model }}
 
 on:
   workflow_dispatch:
@@ -13,6 +13,11 @@ on:
           - zn_m2_immwrt_nowifi_kmod
           - zn_m2_immwrt
           - jdcloud_ipq60xx_immwrt_kmod
+      target:
+        required: true
+        description: make target (e.g. package/qca-nss/qca-nss-ecm/compile)
+        type: string
+        default: package/qca-nss/qca-nss-ecm/compile
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,23 +58,19 @@ jobs:
       - name: Prepare build tree (prep only)
         run: ./build.sh ${{ inputs.model }} debug
 
-      - name: Show gettext package version
-        run: |
-          echo "== 当前 gettext-full Makefile =="
-          grep -E "PKG_VERSION|PKG_SOURCE:=" action_build/package/libs/gettext-full/Makefile | head -5
-          echo "== 目录内容 =="
-          ls -1 action_build/package/libs/gettext-full/ action_build/package/libs/gettext-full/patches 2>/dev/null | head -20
-
-      - name: Build host gettext verbosely
+      - name: Build target verbosely
         run: |
           set -o pipefail
           cd action_build
-          if make package/libs/gettext-full/host/compile V=s 2>&1 | tee /tmp/gt.log; then
-            echo "===== gettext 宿主构建成功 ====="
+          echo "target: ${{ inputs.target }}"
+          if make ${{ inputs.target }} V=s 2>&1 | tee /tmp/pkg.log; then
+            echo "===== OK ====="
           else
-            echo "===== 失败，日志尾部 150 行 ====="
-            tail -n 150 /tmp/gt.log
-            echo "===== compile.txt 尾部 ====="
-            tail -n 120 logs/package/libs/gettext-full/*/compile.txt 2>/dev/null || true
+            echo "===== 失败，日志尾部 200 行 ====="
+            tail -n 200 /tmp/pkg.log
+            echo "===== logs 尾部 ====="
+            for f in $(ls -t logs/package/*/*/*.txt 2>/dev/null | head -3); do
+              echo "----- $f -----"; tail -n 80 "$f"
+            done
             exit 1
           fi

@@ -238,21 +238,32 @@ make download -j$(($(nproc) * 2))
 # 失败时把最近修改的包编译日志打出来，并写成 GitHub annotation，
 # 否则并行构建只留一句 "xyz failed to build"，看不到真正的报错。
 dump_build_failure() {
-    echo "===== 构建失败，导出失败的包编译日志 ====="
-    local f found=0 errline
-    for f in $(ls -t "$BUILD_DIR"/logs/package/*/*/compile.txt 2>/dev/null | head -30); do
+    echo "===== 构建失败，导出失败的包日志 ====="
+    local f n=0 errline
+    # 不限定文件名、不预先要求含 error：打包/安装阶段的失败常常只在 install.txt 里，
+    # 且报错文案不一定是 "error:"。直接按修改时间取最新的几个日志文件。
+    for f in $(ls -t "$BUILD_DIR"/logs/package/*/*/*.txt 2>/dev/null | head -3); do
+        n=$((n + 1))
+        echo "----- $f -----"
+        tail -n 40 "$f"
+        errline=$(grep -m1 -iE "error|failed|cannot|No such" "$f" 2>/dev/null | cut -c1-200)
+        [ -n "$errline" ] && echo "::error file=$f::$errline"
+    done
+    # 再补一次：所有含 error 的 compile.txt（可能不是最新的那几个）
+    for f in $(ls -t "$BUILD_DIR"/logs/package/*/*/compile.txt 2>/dev/null | head -20); do
         if grep -qiE "error:|fatal error|Error [0-9]+" "$f" 2>/dev/null; then
             echo "----- $f -----"
-            tail -n 50 "$f"
+            tail -n 30 "$f"
             errline=$(grep -m1 -iE "error:|fatal error|Error [0-9]+" "$f" | cut -c1-200)
             [ -n "$errline" ] && echo "::error file=$f::$errline"
-            found=$((found + 1))
-            [ "$found" -ge 2 ] && break
+            n=$((n + 1))
+            [ "$n" -ge 4 ] && break
         fi
     done
-    [ "$found" -eq 0 ] && echo "（logs/ 下未找到含 error 的 compile.txt）"
+    [ "$n" -eq 0 ] && echo "（logs/ 下没有任何 pdf/txt 日志可导出）"
     echo "===== 日志导出结束 ====="
 }
+
 
 if ! make -j$(($(nproc) + 1)); then
     # 不再 make -j1 V=s 全量复现：那会把编译量翻倍，容易把 runner 磁盘撑满导致
