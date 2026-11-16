@@ -37,8 +37,8 @@ jobs:
       - name: Pre Clone
         run: ./wrt_core/pre_clone_action.sh ${{ inputs.model }}
 
-      - name: Cache Dependencies
-        uses: actions/cache@v5.0.2
+      - name: Restore Cache (restore only, never save)
+        uses: actions/cache/restore@v5.0.2
         with:
           path: |
             ./action_build/.ccache
@@ -57,6 +57,14 @@ jobs:
 
       - name: Prepare build tree (prep only)
         run: ./build.sh ${{ inputs.model }} debug
+
+      - name: Build tools and toolchain first
+        run: |
+          set -o pipefail
+          cd action_build
+          # package/libs/toolchain 只是把已建好的交叉工具链打成 ipk，
+          # 不先建 tools/toolchain 会报 libgcc_s.so.* 找不到。
+          make -j$(nproc) tools/install toolchain/install 2>&1 | tail -n 40
 
       - name: Build target verbosely
         run: |
