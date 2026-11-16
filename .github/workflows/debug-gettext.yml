@@ -1,0 +1,75 @@
+name: Debug gettext host build
+run-name: Debug gettext - ${{ inputs.model }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        required: true
+        description: Device Model
+        type: choice
+        default: zn_m2_immwrt_nowifi_kmod
+        options:
+          - zn_m2_immwrt_nowifi_kmod
+          - zn_m2_immwrt
+          - jdcloud_ipq60xx_immwrt_kmod
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  debug:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Build System Setup
+        run: |
+          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+          sudo -E apt -yqq install dos2unix libfuse-dev
+
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Pre Clone
+        run: ./wrt_core/pre_clone_action.sh ${{ inputs.model }}
+
+      - name: Cache Dependencies
+        uses: actions/cache@v5.0.2
+        with:
+          path: |
+            ./action_build/.ccache
+            ./action_build/staging_dir
+          key: ${{ runner.os }}-${{ hashFiles('**/repo_flag') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-${{ hashFiles('**/repo_flag') }}-
+
+      - name: Refresh the cache
+        run: |
+          if [ -d "./action_build/staging_dir" ]; then
+            find "./action_build/staging_dir" -type d -name "stamp" -not -path "*target*" | while read -r dir; do
+                find "$dir" -type f -exec touch {} +
+            done
+          fi
+
+      - name: Prepare build tree (prep only)
+        run: ./build.sh ${{ inputs.model }} debug
+
+      - name: Show gettext package version
+        run: |
+          echo "== 当前 gettext-full Makefile =="
+          grep -E "PKG_VERSION|PKG_SOURCE:=" action_build/package/libs/gettext-full/Makefile | head -5
+          echo "== 目录内容 =="
+          ls -1 action_build/package/libs/gettext-full/ action_build/package/libs/gettext-full/patches 2>/dev/null | head -20
+
+      - name: Build host gettext verbosely
+        run: |
+          set -o pipefail
+          cd action_build
+          if make package/libs/gettext-full/host/compile V=s 2>&1 | tee /tmp/gt.log; then
+            echo "===== gettext 宿主构建成功 ====="
+          else
+            echo "===== 失败，日志尾部 150 行 ====="
+            tail -n 150 /tmp/gt.log
+            echo "===== compile.txt 尾部 ====="
+            tail -n 120 logs/package/libs/gettext-full/*/compile.txt 2>/dev/null || true
+            exit 1
+          fi
