@@ -66,6 +66,14 @@ jobs:
           # 不先建 tools/toolchain 会报 libgcc_s.so.* 找不到。
           make -j$(nproc) tools/install toolchain/install 2>&1 | tail -n 40
 
+      - name: Build kernel tree first
+        run: |
+          set -o pipefail
+          cd action_build
+          # qca-nss-ecm 是内核模块，没有内核树会报
+          # No rule to make target '.../linux-qualcommax_ipq60xx/linux-6.x/...'
+          make -j$(nproc) target/linux/compile 2>&1 | tail -n 30
+
       - name: Build target verbosely
         run: |
           set -o pipefail
