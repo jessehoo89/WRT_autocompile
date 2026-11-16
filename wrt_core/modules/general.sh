@@ -44,12 +44,18 @@ clean_up() {
 }
 
 reset_feeds_conf() {
-    git clean -f -d
     if [[ $COMMIT_HASH != "none" && -n "$COMMIT_HASH" ]]; then
-        # 按 sha 固定版本：重新拉取同一个 commit 并检出（不跟随分支头）
+        # 按 sha 固定版本。注意不能用 git checkout：pre_clone_action.sh 会先改
+        # scripts/projectsmirrors.json（删国内镜像源），工作区是脏的，checkout 会被拒绝
+        # （error: Your local changes ... would be overwritten）。
         git fetch --depth 1 origin "$COMMIT_HASH"
-        git checkout -q FETCH_HEAD
+        git reset --hard -q FETCH_HEAD
+        # reset 会把上面那次镜像清理一起冲掉，这里补回来
+        if [ -f scripts/projectsmirrors.json ]; then
+            sed -i '/.cn\//d; /tencent/d; /aliyun/d' scripts/projectsmirrors.json
+        fi
     else
+        git clean -f -d
         git reset --hard "origin/$REPO_BRANCH"
         git pull --ff-only
     fi
