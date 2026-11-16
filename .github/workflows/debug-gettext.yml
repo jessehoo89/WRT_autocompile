@@ -38,9 +38,9 @@ jobs:
           path: |
             ./action_build/.ccache
             ./action_build/staging_dir
-          key: ${{ runner.os }}-${{ hashFiles('**/repo_flag') }}-${{ github.run_id }}
+          key: ${{ runner.os }}-v2-${{ hashFiles('**/repo_flag') }}-${{ github.run_id }}
           restore-keys: |
-            ${{ runner.os }}-${{ hashFiles('**/repo_flag') }}-
+            ${{ runner.os }}-v2-${{ hashFiles('**/repo_flag') }}-
 
       - name: Refresh the cache
         run: |

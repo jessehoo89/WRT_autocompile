@@ -26,8 +26,6 @@ on:
           - redmi_ax6000_immwrt21
           - zn_m2_immwrt
           - zn_m2_libwrt
-          - zn_m2_immwrt_nowifi_kmod
-          - jdcloud_ipq60xx_immwrt_kmod
           - x64_immwrt
 
 env:
@@ -63,15 +61,15 @@ jobs:
       - name: Pre Clone
         run: ./wrt_core/pre_clone_action.sh ${{ inputs.model }}
 
-      - name: Cache Dependencies
-        uses: actions/cache@v5.0.2
+      - name: Restore Cache
+        uses: actions/cache/restore@v5.0.2
         with:
           path: |
             ./action_build/.ccache
             ./action_build/staging_dir
-          key: ${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}-${{ env.BUILD_DATE }}
+          key: ${{ matrix.os }}-v2-${{ hashFiles('**/repo_flag') }}-${{ env.BUILD_DATE }}
           restore-keys: |
-            ${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}-
+            ${{ matrix.os }}-v2-${{ hashFiles('**/repo_flag') }}-
 
       - name: Refresh the cache
         run: |
@@ -114,13 +112,22 @@ jobs:
       - name: Delete Old Cache
         run: |
           # 获取缓存列表并删除
-          gh cache list --key ${{ matrix.os }}-${{ hashFiles('**/repo_flag') }}- --json key --jq '.[] | .key' | while read -r key; do
+          gh cache list --key ${{ matrix.os }}-v2-${{ hashFiles('**/repo_flag') }}- --json key --jq '.[] | .key' | while read -r key; do
             gh cache delete "$key"
           done
           # 输出缓存状态
           echo "========cache status========"
           echo "ccache: $(du -sh ./action_build/.ccache | cut -f 1)"
           echo "staging: $(du -sh ./action_build/staging_dir | cut -f 1)"
+
+      - name: Save Cache (only on success)
+        if: success()
+        uses: actions/cache/save@v5.0.2
+        with:
+          path: |
+            ./action_build/.ccache
+            ./action_build/staging_dir
+          key: ${{ matrix.os }}-v2-${{ hashFiles('**/repo_flag') }}-${{ env.BUILD_DATE }}
 
       - name: Machine Information (Post-build)
         run: |
