@@ -80,6 +80,8 @@ drop_pkg() {
     local file="$1" pkg="$2"
     [ -f "$file" ] || return 0
     sed -i -E "s/(^|[[:space:]])${pkg}([[:space:]]|$)/\1\2/g" "$file"
+    # 摘完若整行只剩一个续行反斜杠，直接删掉该行（上一行的反斜杠仍然续到下一行，语义不变）
+    sed -i -E '/^[[:space:]]*\\[[:space:]]*$/d' "$file"
 }
 
 remove_something_nss_kmod() {
