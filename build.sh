@@ -240,9 +240,15 @@ make download -j$(($(nproc) * 2))
 dump_build_failure() {
     echo "===== 构建失败，导出失败的包日志 ====="
     local f n=0 errline
+    # 注意：调用时当前目录已经在构建树里（前面 cd 过），$BUILD_DIR 是相对路径，
+    # 直接用 "$BUILD_DIR"/logs 会拼成 action_build/action_build/logs 而找不到任何日志。
+    local L="logs"
+    [ -d "$L" ] || L="$BUILD_DIR/logs"
+    [ -d "$L" ] || L="$(pwd)/logs"
+    echo "日志目录: $L"
     # 不限定文件名、不预先要求含 error：打包/安装阶段的失败常常只在 install.txt 里，
     # 且报错文案不一定是 "error:"。直接按修改时间取最新的几个日志文件。
-    for f in $(ls -t "$BUILD_DIR"/logs/package/*/*/*.txt 2>/dev/null | head -3); do
+    for f in $(ls -t "$L"/package/*/*/*.txt 2>/dev/null | head -3); do
         n=$((n + 1))
         echo "----- $f -----"
         tail -n 40 "$f"
@@ -250,7 +256,7 @@ dump_build_failure() {
         [ -n "$errline" ] && echo "::error file=$f::$errline"
     done
     # 再补一次：所有含 error 的 compile.txt（可能不是最新的那几个）
-    for f in $(ls -t "$BUILD_DIR"/logs/package/*/*/compile.txt 2>/dev/null | head -20); do
+    for f in $(ls -t "$L"/package/*/*/compile.txt 2>/dev/null | head -20); do
         if grep -qiE "error:|fatal error|Error [0-9]+" "$f" 2>/dev/null; then
             echo "----- $f -----"
             tail -n 30 "$f"
