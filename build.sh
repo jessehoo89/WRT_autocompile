@@ -239,6 +239,9 @@ make download -j$(($(nproc) * 2))
 # 否则并行构建只留一句 "xyz failed to build"，看不到真正的报错。
 dump_build_failure() {
     echo "===== 构建失败，导出失败的包日志 ====="
+    # 先无条件把 logs 的结构打出来，避免再靠猜层级（前几次就栽在通配符层级上）
+    echo "----- logs 目录结构（前 40 行）-----"
+    find "$( [ -d logs ] && echo logs || echo "$BUILD_DIR/logs" )" -type f 2>/dev/null | head -40
     local f n=0 errline
     # 注意：调用时当前目录已经在构建树里（前面 cd 过），$BUILD_DIR 是相对路径，
     # 直接用 "$BUILD_DIR"/logs 会拼成 action_build/action_build/logs 而找不到任何日志。
