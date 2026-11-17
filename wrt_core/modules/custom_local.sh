@@ -40,7 +40,7 @@ fix_qca_ssdk_modinfo() {
         echo "已安装 patch_modinfo.py"
     else
         echo "警告：patch_modinfo.py 未找到 ($script_src)" >&2
-        return 1
+        return 0
     fi
 
     # 在 Build/Compile 的 $(CP) ... 行后追加 modinfo 清理行
@@ -65,8 +65,8 @@ print('已插入 modinfo 修复')
 PYEOF
         echo "已插入 modinfo 修复到 $makefile"
     else
-        echo "警告：qca-ssdk Makefile 未找到 ($makefile)" >&2
-        return 1
+        echo "警告：qca-ssdk Makefile 未找到 ($makefile)，跳过该修正（不同源码布局属正常）" >&2
+        return 0
     fi
 }
 
