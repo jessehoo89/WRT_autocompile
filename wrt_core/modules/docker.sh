@@ -77,6 +77,13 @@ _docker_stack_set_or_append_dockerd_uci_option() {
     fi
 }
 
+_docker_stack_remove_dockerd_uci_option() {
+    local config_path="$1"
+    local option_name="$2"
+
+    sed -i "/^[[:space:]]*option[[:space:]]\+${option_name}[[:space:]]\+/d" "$config_path"
+}
+
 _docker_stack_set_or_append_sysctl_value() {
     local sysctl_path="$1"
     local sysctl_key="$2"
@@ -104,13 +111,15 @@ _docker_stack_update_dockerd_depends_block() {
             in_depends = 0
             replaced = 0
         }
-        /^  DEPENDS:=\$\(ARCH_DEPENDS\) \\$/ {
+        /^[[:space:]]*DEPENDS:=\$\((GO_)?ARCH_DEPENDS\)[[:space:]]*\\[[:space:]]*$/ {
+            arch_depends = ($0 ~ /\$\(GO_ARCH_DEPENDS\)/) ? "GO_ARCH_DEPENDS" : "ARCH_DEPENDS"
             in_depends = 1
             replaced = 1
 
-            print "  DEPENDS:=$(ARCH_DEPENDS) \\" 
+            print "  DEPENDS:=$(" arch_depends ") \\"
             print "    +ca-certificates \\" 
             print "    +containerd \\" 
+            print "    +fuse-overlayfs \\" 
             print "    +iptables-nft \\" 
             print "    +iptables-mod-extra \\" 
             print "    +IPV6:ip6tables-nft \\" 
@@ -841,11 +850,17 @@ _docker_stack_ensure_nftables_init_support() {
 docker_stack_sync_nftables_compat() {
     local build_dir="${1:-${BUILD_DIR:-}}"
     local dry_run="${2:-${DOCKER_STACK_DRY_RUN:-0}}"
-    local storage_driver="${3:-${DOCKER_STACK_STORAGE_DRIVER:-vfs}}"
+    local storage_driver=""
     local dockerd_makefile=""
     local dockerd_config=""
     local dockerd_init=""
     local dockerd_sysctl=""
+
+    if [ "$#" -ge 3 ]; then
+        storage_driver="$3"
+    else
+        storage_driver="${DOCKER_STACK_STORAGE_DRIVER:-}"
+    fi
 
     [ -n "$build_dir" ] || {
         echo "错误：docker_stack_sync_nftables_compat 缺少 build_dir 参数" >&2
@@ -892,6 +907,8 @@ docker_stack_sync_nftables_compat() {
         fi
         if [ -n "$storage_driver" ]; then
             echo "[dry-run] dockerd storage_driver will be set to $storage_driver"
+        else
+            echo "[dry-run] dockerd storage_driver will be omitted for Docker auto-selection"
         fi
         echo "[dry-run] dockerd forwarding sysctls will be set to 1"
         docker_stack_sync_dockerman_nftables_compat "$build_dir" "1" || return 1
@@ -907,6 +924,8 @@ docker_stack_sync_nftables_compat() {
     _docker_stack_set_or_append_dockerd_uci_option "$dockerd_config" "firewall_backend" "nftables" || return 1
     if [ -n "$storage_driver" ]; then
         _docker_stack_set_or_append_dockerd_uci_option "$dockerd_config" "storage_driver" "$storage_driver" || return 1
+    else
+        _docker_stack_remove_dockerd_uci_option "$dockerd_config" "storage_driver" || return 1
     fi
     _docker_stack_fix_dockerd_nftables_comment "$dockerd_config"
     echo "dockerd nftables 默认策略已应用。"

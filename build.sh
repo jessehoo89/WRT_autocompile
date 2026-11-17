@@ -184,7 +184,14 @@ apply_config() {
         if echo "$Dev" | grep -q "nowifi"; then
             cat "$BASE_PATH/deconfig/nss-wifi-off.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
         else
-            cat "$BASE_PATH/deconfig/nss.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+            # nss.config 可能位于 deconfig/ 或 deconfig/fragments/（上游已迁到 fragments）
+            local nss_conf="$BASE_PATH/deconfig/nss.config"
+            [ -f "$nss_conf" ] || nss_conf="$BASE_PATH/deconfig/fragments/nss.config"
+            if [ -f "$nss_conf" ]; then
+                cat "$nss_conf" >> "$BASE_PATH/../$BUILD_DIR/.config"
+            else
+                echo "警告：未找到 nss.config，跳过 NSS 片段" >&2
+            fi
         fi
     fi
 

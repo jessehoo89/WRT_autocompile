@@ -7,8 +7,10 @@ imm-mt798x/
 imm-nss/
 imm-x64/
 lede/
-libwrt-k612/
+libwrt/
 immortalwrt/
+airoha-wrt/
+ponwrt/
 compilecfg/test.ini
 deconfig/test.config
 *.swp
@@ -31,3 +33,4 @@ wrt_core/deconfig/test.config
 .taskmaster/
 .sisyphus/
 AGENTS.md
+.omo/
