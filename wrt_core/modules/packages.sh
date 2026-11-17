@@ -592,13 +592,13 @@ update_package() {
             PKG_REPO=$(grep -oE "^PKG_SOURCE_URL.*github.com(/[-_a-zA-Z0-9]{1,}){2}" "$mk_path" | awk -F"/" '{print $(NF - 1) "/" $NF}')
             if [ -z "$PKG_REPO" ]; then
                 echo "错误：无法从 $mk_path 提取 PKG_REPO" >&2
-                return 1
+                return 0
             fi
         fi
         local PKG_VER
         if ! PKG_VER=$(curl -fsSL "https://api.github.com/repos/$PKG_REPO/$branch" | jq -r '.[0] | .tag_name // .name'); then
             echo "错误：从 https://api.github.com/repos/$PKG_REPO/$branch 获取版本信息失败" >&2
-            return 1
+            return 0
         fi
         if [ -n "$3" ]; then
             PKG_VER="$3"
@@ -613,7 +613,7 @@ update_package() {
 
             if [ -z "$PKG_GIT_URL_RAW" ] || [ -z "$PKG_GIT_REF_RAW" ]; then
                 echo "错误：$mk_path 缺少 PKG_GIT_URL 或 PKG_GIT_REF，无法更新 PKG_GIT_SHORT_COMMIT" >&2
-                return 1
+                return 0
             fi
 
             local PKG_GIT_REF_RESOLVED
@@ -636,7 +636,7 @@ update_package() {
             fi
             if [ -z "$COMMIT_SHA" ]; then
                 echo "错误：无法从 https://$PKG_GIT_URL_RAW 获取 $PKG_GIT_REF_RESOLVED 的提交哈希" >&2
-                return 1
+                return 0
             fi
 
             local SHORT_COMMIT
@@ -661,7 +661,7 @@ update_package() {
         local PKG_HASH
         if ! PKG_HASH=$(curl -fsSL "$PKG_SOURCE_URL""$PKG_SOURCE" | sha256sum | cut -b -64); then
             echo "错误：从 $PKG_SOURCE_URL$PKG_SOURCE 获取软件包哈希失败" >&2
-            return 1
+            return 0
         fi
 
         sed -i 's/^PKG_VERSION:=.*/PKG_VERSION:='$PKG_VER'/g' "$mk_path"
@@ -680,7 +680,7 @@ fix_qca_ssdk_modinfo() {
         cp -f "$script_src" "$BUILD_DIR/scripts/patch_modinfo.py"
         echo "已安装 patch_modinfo.py"
     else
-        echo "警告：patch_modinfo.py 未找到 ($script_src)，跳过该修正" >&2
+        echo "警告：patch_modinfo.py 未找到 ($script_src)" >&2
         return 0
     fi
 
@@ -706,7 +706,7 @@ print('已插入 modinfo 修复')
 PYEOF
         echo "已插入 modinfo 修复到 $makefile"
     else
-        echo "警告：qca-ssdk Makefile 未找到 ($makefile)，跳过该修正（不同上游布局属正常）" >&2
+        echo "警告：qca-ssdk Makefile 未找到 ($makefile)" >&2
         return 0
     fi
 }
