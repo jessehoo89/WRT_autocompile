@@ -175,6 +175,20 @@ remove_uhttpd_dependency() {
     fi
 }
 
+append_config() {
+    # 上游把部分配置片迁到了 deconfig/fragments/，这里两处都找，
+    # 避免 merge 后仍按 deconfig/<name> 硬编码而取不到文件。
+    local name="$1" f
+    for f in "$BASE_PATH/deconfig/$name" "$BASE_PATH/deconfig/fragments/$name"; do
+        if [ -f "$f" ]; then
+            cat "$f" >> "$BASE_PATH/../$BUILD_DIR/.config"
+            return 0
+        fi
+    done
+    echo "警告：未找到配置片 $name（deconfig/ 与 deconfig/fragments/ 均无），已跳过" >&2
+    return 0
+}
+
 apply_config() {
     \cp -f "$CONFIG_FILE" "$BASE_PATH/../$BUILD_DIR/.config"
     
@@ -195,11 +209,9 @@ apply_config() {
         fi
     fi
 
-    cat "$BASE_PATH/deconfig/compile_base.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
-
-    cat "$BASE_PATH/deconfig/docker_deps.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
-
-    cat "$BASE_PATH/deconfig/proxy.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+    append_config compile_base.config
+    append_config docker_deps.config
+    append_config proxy.config
 }
 
 REPO_URL=$(read_ini_by_key "REPO_URL")
