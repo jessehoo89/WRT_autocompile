@@ -53,7 +53,11 @@ main() {
     fix_mk_def_depends
 
     update_default_lan_addr
-    remove_something_nss_kmod
+    # 停用：上游自 2026-10-29（3dfd706f58 feat: run AX NSS without ath11k）起，
+    # NSS 包选择已与 ath11k 解耦，并集中由 target/linux/qualcommax/{Makefile,ipq60xx/target.mk,
+    # ipq807x/target.mk} 管理；本仓库再从这里删 NSS 包只会造成与上游打架。
+    # 需要精简 NSS 时请改 deconfig/<型号>.config，不要改上游 Makefile。
+    # remove_something_nss_kmod
     update_affinity_script
     update_ath11k_fw
     fix_mkpkg_format_invalid
