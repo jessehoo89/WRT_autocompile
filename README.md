@@ -140,7 +140,11 @@ sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_e
 - **wrt_core/**: 核心模块目录，包含所有配置、补丁和脚本。
   - **compilecfg/**: 编译配置文件 (.ini)。
   - **deconfig/**: 默认配置文件 (.config)。
-  - **modules/**: 模块化脚本 (general.sh, feeds.sh, packages.sh, system.sh)。
+  - **modules/**: 模块化脚本，已与上游 ZqinKing/wrt_release 对齐：
+    (源码克隆) ·  ·  ·  ·
+     ·  ·  ·
+     ·  ·  ·  ·  ·
+     · （本仓库独有修正）。
   - **patches/**: 系统和软件包补丁。
   - **scripts/**: 辅助脚本。
   - **update.sh**: 更新逻辑主入口脚本。
