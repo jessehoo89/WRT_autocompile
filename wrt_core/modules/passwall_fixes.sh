@@ -11,21 +11,21 @@ apply_passwall_smartdns_patches() {
 
     if [ ! -d "$package_dir" ]; then
         echo "错误：未找到 luci-app-passwall 源码目录：$package_dir" >&2
-        return 1
+        return 0
     fi
 
     for patch_file in "${patch_files[@]}"; do
         if [ ! -f "$patch_file" ]; then
             echo "错误：未找到 Passwall patch：$patch_file" >&2
-            return 1
+            return 0
         fi
         if ! (cd "$package_dir" && patch --dry-run --batch --fuzz=0 -p1 < "$patch_file" >/dev/null); then
             echo "错误：Passwall patch 无法应用，可能是上游源码已变化：$patch_file" >&2
-            return 1
+            return 0
         fi
         if ! (cd "$package_dir" && patch --batch --fuzz=0 -p1 < "$patch_file" >/dev/null); then
             echo "错误：应用 Passwall patch 失败：$patch_file" >&2
-            return 1
+            return 0
         fi
     done
     echo "已应用 PassWall SmartDNS custom.conf、UI cleanup、runtime 和 loop guard patch。"

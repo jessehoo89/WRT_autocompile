@@ -26,7 +26,9 @@ on:
           - redmi_ax6000_immwrt21
           - zn_m2_immwrt
           - zn_m2_libwrt
+          - zn_m2_libwrt_nowifi
           - zn_m2_immwrt_nowifi_kmod
+          - zn_m2_immwrt_nowifi
           - jdcloud_ipq60xx_immwrt_kmod
           - x64_immwrt
 

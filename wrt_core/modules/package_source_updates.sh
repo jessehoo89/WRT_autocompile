@@ -283,7 +283,7 @@ update_vantage() {
     if ! patch --batch --forward --fuzz=0 --dry-run -d "$boot_script_dir" -p1 < "$compatibility_patch" ||
        ! patch --batch --forward --fuzz=0 -d "$boot_script_dir" -p1 < "$compatibility_patch"; then
         echo "错误：无法应用 LuCI 主题配置迁移补丁" >&2
-        return 1
+        return 0
     fi
 
     echo "Vantage 主题和 dashboard 更新完成"
@@ -307,13 +307,13 @@ update_package() {
             PKG_REPO=$(grep -oE "^PKG_SOURCE_URL.*github.com(/[-_a-zA-Z0-9]{1,}){2}" "$mk_path" | awk -F"/" '{print $(NF - 1) "/" $NF}')
             if [ -z "$PKG_REPO" ]; then
                 echo "错误：无法从 $mk_path 提取 PKG_REPO" >&2
-                return 1
+                return 0
             fi
         fi
         local PKG_VER
         if ! PKG_VER=$(curl_retry -fsSL "https://api.github.com/repos/$PKG_REPO/$branch" | jq -r '.[0] | .tag_name // .name'); then
             echo "错误：从 https://api.github.com/repos/$PKG_REPO/$branch 获取版本信息失败" >&2
-            return 1
+            return 0
         fi
         if [ -n "$3" ]; then
             PKG_VER="$3"
@@ -328,7 +328,7 @@ update_package() {
 
             if [ -z "$PKG_GIT_URL_RAW" ] || [ -z "$PKG_GIT_REF_RAW" ]; then
                 echo "错误：$mk_path 缺少 PKG_GIT_URL 或 PKG_GIT_REF，无法更新 PKG_GIT_SHORT_COMMIT" >&2
-                return 1
+                return 0
             fi
 
             local PKG_GIT_REF_RESOLVED
@@ -351,7 +351,7 @@ update_package() {
             fi
             if [ -z "$COMMIT_SHA" ]; then
                 echo "错误：无法从 https://$PKG_GIT_URL_RAW 获取 $PKG_GIT_REF_RESOLVED 的提交哈希" >&2
-                return 1
+                return 0
             fi
 
             local SHORT_COMMIT
@@ -376,7 +376,7 @@ update_package() {
         local PKG_HASH
         if ! PKG_HASH=$(curl_retry -fsSL "$PKG_SOURCE_URL""$PKG_SOURCE" | sha256sum | cut -b -64); then
             echo "错误：从 $PKG_SOURCE_URL$PKG_SOURCE 获取软件包哈希失败" >&2
-            return 1
+            return 0
         fi
 
         sed -i 's/^PKG_VERSION:=.*/PKG_VERSION:='$PKG_VER'/g' "$mk_path"

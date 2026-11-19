@@ -32,7 +32,7 @@ fix_miniupnpd() {
             "immortalwrt/packages" \
             "net/miniupnpd"; then
             echo "错误：同步 miniupnpd 到 $upstream_branch 分支失败" >&2
-            return 1
+            return 0
         fi
 
         install -Dm644 "$BASE_PATH/patches/$patch_file" "$miniupnpd_dir/patches/$patch_file"

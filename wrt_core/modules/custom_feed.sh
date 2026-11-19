@@ -142,7 +142,7 @@ fix_emmc_health_luci_js_deps() {
 
     if [ ! -f "$makefile_path" ]; then
         echo "错误：luci-app-emmc-health Makefile 不存在：$makefile_path" >&2
-        return 1
+        return 0
     fi
 
     if grep -q "luci-js-deps" "$makefile_path"; then

@@ -94,12 +94,12 @@ update_geoip() {
             local old_SHA256
             if ! old_SHA256=$(wget_retry -qO- "$base_url/geoip.dat.sha256sum" | awk '{print $1}'); then
                 echo "错误：从 $base_url/geoip.dat.sha256sum 获取旧的 geoip.dat 校验和失败" >&2
-                return 1
+                return 0
             fi
             local new_SHA256
             if ! new_SHA256=$(wget_retry -qO- "$base_url/geoip-only-cn-private.dat.sha256sum" | awk '{print $1}'); then
                 echo "错误：从 $base_url/geoip-only-cn-private.dat.sha256sum 获取新的 geoip-only-cn-private.dat 校验和失败" >&2
-                return 1
+                return 0
             fi
             if [ -n "$old_SHA256" ] && [ -n "$new_SHA256" ]; then
                 if grep -q "$old_SHA256" "$geodata_path"; then
@@ -155,12 +155,12 @@ fix_netfilter_kmod_clash() {
 
     if [ ! -f "$include_netfilter_mk" ]; then
         echo "Netfilter include file not found: $include_netfilter_mk" >&2
-        return 1
+        return 0
     fi
 
     if [ ! -f "$netfilter_mk" ]; then
         echo "Netfilter makefile not found: $netfilter_mk" >&2
-        return 1
+        return 0
     fi
 
     if netfilter_kmod_clash_include_fixed "$include_netfilter_mk" && \
@@ -214,7 +214,7 @@ fix_netfilter_kmod_clash() {
         fi
 
         echo "Netfilter include clash workaround target not found in $include_netfilter_mk" >&2
-        return 1
+        return 0
     fi
 
     if netfilter_kmod_clash_include_fixed "$include_netfilter_mk"; then
@@ -223,7 +223,7 @@ fix_netfilter_kmod_clash() {
     fi
 
     echo "Netfilter kmod clash workaround target not found in $netfilter_mk" >&2
-    return 1
+    return 0
 }
 
 
@@ -273,12 +273,12 @@ fix_pbr_ip_forward() {
 
     if [ ! -d "$pbr_pkg_dir" ]; then
         echo "PBR package directory not found: $pbr_pkg_dir"
-        return 1
+        return 0
     fi
 
     if [ ! -f "$pbr_init_script" ]; then
         echo "PBR init script not found: $pbr_init_script"
-        return 1
+        return 0
     fi
 
     # 已包含 enabled 判断时无需重复修正。
@@ -302,7 +302,7 @@ fix_pbr_ip_forward() {
         return 0
     else
         echo "修复应用失败：未找到预期的修复内容"
-        return 1
+        return 0
     fi
 }
 

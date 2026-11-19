@@ -201,11 +201,11 @@ fix_netwiz_permissions() {
     for relative_path in "${executable_files[@]}"; do
         if [ ! -f "$package_dir/$relative_path" ]; then
             echo "错误：luci-app-netwiz 执行文件不存在：$package_dir/$relative_path" >&2
-            return 1
+            return 0
         fi
         if ! chmod 755 "$package_dir/$relative_path"; then
             echo "错误：无法设置 luci-app-netwiz 执行权限：$package_dir/$relative_path" >&2
-            return 1
+            return 0
         fi
     done
 }

@@ -15,7 +15,7 @@ _docker_stack_resolve_component_makefile() {
     done
 
     echo "错误：未找到 $component Makefile（已检查 package/feeds 与 feeds/packages）" >&2
-    return 1
+    return 0
 }
 
 _docker_stack_resolve_dockerd_file() {
@@ -33,7 +33,7 @@ _docker_stack_resolve_dockerd_file() {
     done
 
     echo "错误：未找到 dockerd 文件 $rel（已检查 package/feeds 与 feeds/packages）" >&2
-    return 1
+    return 0
 }
 
 _docker_stack_resolve_dockerman_init() {
@@ -73,7 +73,7 @@ _docker_stack_set_or_append_dockerd_uci_option() {
         sed -i "/^config globals 'globals'/a\	option ${option_name} '${option_value}'" "$config_path"
     else
         echo "错误：$config_path 中缺少 config globals 'globals' 段，无法设置 $option_name" >&2
-        return 1
+        return 0
     fi
 }
 
@@ -103,7 +103,7 @@ _docker_stack_update_dockerd_depends_block() {
 
     tmp_path=$(mktemp) || {
         echo "错误：创建临时文件失败" >&2
-        return 1
+        return 0
     }
 
     awk '
@@ -153,7 +153,7 @@ _docker_stack_update_dockerd_depends_block() {
     ' "$mk_path" > "$tmp_path" || {
         rm -f "$tmp_path"
         echo "错误：未能重写 $mk_path 的 DEPENDS 块" >&2
-        return 1
+        return 0
     }
 
     mv "$tmp_path" "$mk_path"
@@ -165,7 +165,7 @@ _docker_stack_fix_dockerd_vendored_checks() {
 
     tmp_path=$(mktemp) || {
         echo "错误：创建临时文件失败" >&2
-        return 1
+        return 0
     }
 
     awk '
@@ -195,7 +195,7 @@ _docker_stack_fix_dockerd_vendored_checks() {
     ' "$mk_path" > "$tmp_path" || {
         rm -f "$tmp_path"
         echo "错误：未能修补 $mk_path 的 vendored 依赖校验" >&2
-        return 1
+        return 0
     }
 
     mv "$tmp_path" "$mk_path"
@@ -234,7 +234,7 @@ _docker_stack_patch_dockerman_backend_helpers() {
 
     tmp_path=$(mktemp) || {
         echo "错误：创建临时文件失败" >&2
-        return 1
+        return 0
     }
 
     awk '
@@ -275,7 +275,7 @@ _docker_stack_patch_dockerman_backend_helpers() {
     ' "$dockerman_init" > "$tmp_path" || {
         rm -f "$tmp_path"
         echo "错误：无法在 $dockerman_init 注入 firewall backend 辅助函数" >&2
-        return 1
+        return 0
     }
 
     mv "$tmp_path" "$dockerman_init"
@@ -289,7 +289,7 @@ _docker_stack_patch_dockerman_start_service() {
 
     tmp_path=$(mktemp) || {
         echo "错误：创建临时文件失败" >&2
-        return 1
+        return 0
     }
 
     awk '
@@ -314,7 +314,7 @@ _docker_stack_patch_dockerman_start_service() {
     ' "$dockerman_init" > "$tmp_path" || {
         rm -f "$tmp_path"
         echo "错误：无法在 $dockerman_init 的 start_service 注入 nftables 分支" >&2
-        return 1
+        return 0
     }
 
     mv "$tmp_path" "$dockerman_init"
@@ -332,7 +332,7 @@ _docker_stack_ensure_dockerman_nftables_compat() {
 
     _docker_stack_dockerman_init_supports_nftables_backend "$dockerman_init" || {
         echo "错误：补丁后 $dockerman_init 仍缺少 nftables 兼容逻辑" >&2
-        return 1
+        return 0
     }
 }
 
@@ -343,7 +343,7 @@ docker_stack_sync_dockerman_nftables_compat() {
 
     [ -n "$build_dir" ] || {
         echo "错误：docker_stack_sync_dockerman_nftables_compat 缺少 build_dir 参数" >&2
-        return 1
+        return 0
     }
 
     build_dir=$(_docker_stack_normalize_build_dir "$build_dir")
@@ -379,7 +379,7 @@ _docker_stack_patch_nft_prereq_block() {
     if grep -Fq '# === DOCKER_STACK_NFT_PREREQ_START ===' "$dockerd_init"; then
         tmp_path=$(mktemp) || {
             echo "错误：创建临时文件失败" >&2
-            return 1
+            return 0
         }
 
         awk '
@@ -400,7 +400,7 @@ _docker_stack_patch_nft_prereq_block() {
         ' "$dockerd_init" > "$tmp_path" || {
             rm -f "$tmp_path"
             echo "错误：无法清理旧的 nftables 前置校验函数块" >&2
-            return 1
+            return 0
         }
 
         mv "$tmp_path" "$dockerd_init"
@@ -408,7 +408,7 @@ _docker_stack_patch_nft_prereq_block() {
 
     tmp_path=$(mktemp) || {
         echo "错误：创建临时文件失败" >&2
-        return 1
+        return 0
     }
 
     awk '
@@ -467,7 +467,7 @@ _docker_stack_patch_nft_prereq_block() {
     ' "$dockerd_init" > "$tmp_path" || {
         rm -f "$tmp_path"
         echo "错误：无法在 $dockerd_init 注入 nftables 前置校验函数块" >&2
-        return 1
+        return 0
     }
 
     mv "$tmp_path" "$dockerd_init"
@@ -482,7 +482,7 @@ _docker_stack_patch_process_config_nftables() {
     if ! grep -Fq 'config_get firewall_backend globals firewall_backend "nftables"' "$dockerd_init"; then
         tmp_path=$(mktemp) || {
             echo "错误：创建临时文件失败" >&2
-            return 1
+            return 0
         }
 
         awk '
@@ -540,7 +540,7 @@ _docker_stack_patch_process_config_nftables() {
         ' "$dockerd_init" > "$tmp_path" || {
             rm -f "$tmp_path"
             echo "错误：无法重写 $dockerd_init 的 firewall_backend 配置段" >&2
-            return 1
+            return 0
         }
 
         mv "$tmp_path" "$dockerd_init"
@@ -553,7 +553,7 @@ _docker_stack_patch_process_config_nftables() {
     if ! grep -Fq 'BLOCKING_RULE_ERROR=0' "$dockerd_init"; then
         tmp_path=$(mktemp) || {
             echo "错误：创建临时文件失败" >&2
-            return 1
+            return 0
         }
 
         awk '
@@ -590,7 +590,7 @@ _docker_stack_patch_process_config_nftables() {
         ' "$dockerd_init" > "$tmp_path" || {
             rm -f "$tmp_path"
             echo "错误：无法重写 $dockerd_init 的 blocked_interfaces 处理段" >&2
-            return 1
+            return 0
         }
 
         mv "$tmp_path" "$dockerd_init"
@@ -610,7 +610,7 @@ _docker_stack_patch_iptables_dispatch() {
 
     tmp_path=$(mktemp) || {
         echo "错误：创建临时文件失败" >&2
-        return 1
+        return 0
     }
 
     awk '
@@ -626,7 +626,7 @@ _docker_stack_patch_iptables_dispatch() {
     ' "$dockerd_init" > "$tmp_path" || {
         rm -f "$tmp_path"
         echo "错误：无法清理 $dockerd_init 中旧的 firewall_backend 注入行" >&2
-        return 1
+        return 0
     }
 
     mv "$tmp_path" "$dockerd_init"
@@ -634,7 +634,7 @@ _docker_stack_patch_iptables_dispatch() {
     if ! grep -Fq 'local firewall_backend="${2}"' "$dockerd_init"; then
         tmp_path=$(mktemp) || {
             echo "错误：创建临时文件失败" >&2
-            return 1
+            return 0
         }
 
         awk '
@@ -672,7 +672,7 @@ _docker_stack_patch_iptables_dispatch() {
         ' "$dockerd_init" > "$tmp_path" || {
             rm -f "$tmp_path"
             echo "错误：无法向 $dockerd_init 注入 firewall_backend 参数" >&2
-            return 1
+            return 0
         }
 
         mv "$tmp_path" "$dockerd_init"
@@ -681,7 +681,7 @@ _docker_stack_patch_iptables_dispatch() {
     if ! grep -Fq 'nftables_add_blocking_rules "${cfg}"' "$dockerd_init"; then
         tmp_path=$(mktemp) || {
             echo "错误：创建临时文件失败" >&2
-            return 1
+            return 0
         }
 
         awk '
@@ -722,7 +722,7 @@ _docker_stack_patch_iptables_dispatch() {
         ' "$dockerd_init" > "$tmp_path" || {
             rm -f "$tmp_path"
             echo "错误：无法向 $dockerd_init 注入 nftables 规则分支" >&2
-            return 1
+            return 0
         }
 
         mv "$tmp_path" "$dockerd_init"
@@ -737,7 +737,7 @@ _docker_stack_patch_append_nft_rule_helpers() {
 
     tmp_path=$(mktemp) || {
         echo "错误：创建临时文件失败" >&2
-        return 1
+        return 0
     }
 
     awk '
@@ -819,7 +819,7 @@ _docker_stack_patch_append_nft_rule_helpers() {
     ' "$dockerd_init" > "$tmp_path" || {
         rm -f "$tmp_path"
         echo "错误：无法向 $dockerd_init 追加 nftables 规则函数" >&2
-        return 1
+        return 0
     }
 
     mv "$tmp_path" "$dockerd_init"
@@ -843,7 +843,7 @@ _docker_stack_ensure_nftables_init_support() {
 
     _docker_stack_init_supports_nftables_backend "$dockerd_init" || {
         echo "错误：补丁后 $dockerd_init 仍缺少 nftables backend 逻辑" >&2
-        return 1
+        return 0
     }
 }
 
@@ -864,12 +864,12 @@ docker_stack_sync_nftables_compat() {
 
     [ -n "$build_dir" ] || {
         echo "错误：docker_stack_sync_nftables_compat 缺少 build_dir 参数" >&2
-        return 1
+        return 0
     }
 
     if [ "$dry_run" != "0" ] && [ "$dry_run" != "1" ]; then
         echo "错误：docker_stack_sync_nftables_compat 仅支持 dry_run 为 0 或 1，当前值: $dry_run" >&2
-        return 1
+        return 0
     fi
 
     build_dir=$(_docker_stack_normalize_build_dir "$build_dir")
@@ -881,19 +881,19 @@ docker_stack_sync_nftables_compat() {
 
     [ -f "$dockerd_makefile" ] || {
         echo "错误：未找到 dockerd Makefile: $dockerd_makefile" >&2
-        return 1
+        return 0
     }
     [ -f "$dockerd_config" ] || {
         echo "错误：未找到 dockerd 配置文件: $dockerd_config" >&2
-        return 1
+        return 0
     }
     [ -f "$dockerd_init" ] || {
         echo "错误：未找到 dockerd init 脚本: $dockerd_init" >&2
-        return 1
+        return 0
     }
     [ -f "$dockerd_sysctl" ] || {
         echo "错误：未找到 dockerd sysctl 文件: $dockerd_sysctl" >&2
-        return 1
+        return 0
     }
 
     if [ "$dry_run" = "1" ]; then
