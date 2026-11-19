@@ -175,24 +175,47 @@ remove_uhttpd_dependency() {
     fi
 }
 
+append_config() {
+    # 上游把部分配置片迁到了 deconfig/fragments/，这里两处都找，
+    # 避免 merge 后仍按 deconfig/<name> 硬编码而取不到文件。
+    local name="$1" f
+    for f in "$BASE_PATH/deconfig/$name" "$BASE_PATH/deconfig/fragments/$name"; do
+        if [ -f "$f" ]; then
+            cat "$f" >> "$BASE_PATH/../$BUILD_DIR/.config"
+            return 0
+        fi
+    done
+    echo "警告：未找到配置片 $name（deconfig/ 与 deconfig/fragments/ 均无），已跳过" >&2
+    return 0
+}
+
 apply_config() {
     \cp -f "$CONFIG_FILE" "$BASE_PATH/../$BUILD_DIR/.config"
-    
+
+    # NSS 片段：nowifi 机型用 nss-wifi-off.config，其余用 nss.config
     if grep -qE "(ipq60xx|ipq807x)" "$BASE_PATH/../$BUILD_DIR/.config" &&
         ! grep -q "CONFIG_GIT_MIRROR" "$BASE_PATH/../$BUILD_DIR/.config"; then
-        # nowifi 设备跳过 nss.config 中的无线选项，改用 nss-wifi-off.config
         if echo "$Dev" | grep -q "nowifi"; then
-            cat "$BASE_PATH/deconfig/nss-wifi-off.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+            append_config nss-wifi-off.config
         else
-            cat "$BASE_PATH/deconfig/nss.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+            append_config nss.config
         fi
     fi
 
-    cat "$BASE_PATH/deconfig/compile_base.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+    # 基础配置：main 一直追加；merge 后遗漏会让 USE_APK 等基础项丢失
+    append_config compile_base.config
 
-    cat "$BASE_PATH/deconfig/docker_deps.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
-
-    cat "$BASE_PATH/deconfig/proxy.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+    # 片段：优先按 ini 的 CONFIG_FRAGMENTS 声明（上游机制），未声明时保持旧行为
+    local frags frag
+    frags=$(read_ini_by_key "CONFIG_FRAGMENTS")
+    if [ -n "$frags" ]; then
+        for frag in $(echo "$frags" | tr ',' ' '); do
+            append_config "$frag.config"
+        done
+    else
+        append_config docker_deps.config
+        append_config proxy.config
+    fi
 }
 
 REPO_URL=$(read_ini_by_key "REPO_URL")
