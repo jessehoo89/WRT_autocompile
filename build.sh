@@ -191,27 +191,31 @@ append_config() {
 
 apply_config() {
     \cp -f "$CONFIG_FILE" "$BASE_PATH/../$BUILD_DIR/.config"
-    
+
+    # NSS 片段：nowifi 机型用 nss-wifi-off.config，其余用 nss.config
     if grep -qE "(ipq60xx|ipq807x)" "$BASE_PATH/../$BUILD_DIR/.config" &&
         ! grep -q "CONFIG_GIT_MIRROR" "$BASE_PATH/../$BUILD_DIR/.config"; then
-        # nowifi 设备跳过 nss.config 中的无线选项，改用 nss-wifi-off.config
         if echo "$Dev" | grep -q "nowifi"; then
-            cat "$BASE_PATH/deconfig/nss-wifi-off.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
+            append_config nss-wifi-off.config
         else
-            # nss.config 可能位于 deconfig/ 或 deconfig/fragments/（上游已迁到 fragments）
-            local nss_conf="$BASE_PATH/deconfig/nss.config"
-            [ -f "$nss_conf" ] || nss_conf="$BASE_PATH/deconfig/fragments/nss.config"
-            if [ -f "$nss_conf" ]; then
-                cat "$nss_conf" >> "$BASE_PATH/../$BUILD_DIR/.config"
-            else
-                echo "警告：未找到 nss.config，跳过 NSS 片段" >&2
-            fi
+            append_config nss.config
         fi
     fi
 
+    # 基础配置：main 一直追加；merge 后遗漏会让 USE_APK 等基础项丢失
     append_config compile_base.config
-    append_config docker_deps.config
-    append_config proxy.config
+
+    # 片段：优先按 ini 的 CONFIG_FRAGMENTS 声明（上游机制），未声明时保持旧行为
+    local frags frag
+    frags=$(read_ini_by_key "CONFIG_FRAGMENTS")
+    if [ -n "$frags" ]; then
+        for frag in $(echo "$frags" | tr ',' ' '); do
+            append_config "$frag.config"
+        done
+    else
+        append_config docker_deps.config
+        append_config proxy.config
+    fi
 }
 
 REPO_URL=$(read_ini_by_key "REPO_URL")
