@@ -43,18 +43,24 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Build System Setup
+      - name: Free Disk Space
         run: |
-          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-          sudo -E apt -yqq install dos2unix
-          sudo -E apt -yqq install libfuse-dev
-          sudo -E apt -yqq autoremove --purge
-          sudo -E apt -yqq autoclean
-          sudo -E apt -yqq clean
-          sudo -E systemctl daemon-reload
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/.ghcup || true
+          sudo rm -rf /usr/share/swift || true
+          sudo rm -rf "${AGENT_TOOLSDIRECTORY:-/opt/hostedtoolcache}" || true
+          docker system prune -af || true
+          sudo -E apt-get autoremove --purge -y || true
+          sudo -E apt-get clean || true
+          df -hT
 
       - name: Checkout
         uses: actions/checkout@v6.0.2
+
+      - name: Build System Setup
+        run: sudo bash wrt_core/setup_ci_environment.sh
 
       - name: Set Build Date and Timezone
         run: |
